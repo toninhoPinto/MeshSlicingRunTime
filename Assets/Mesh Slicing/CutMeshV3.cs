@@ -283,19 +283,19 @@ public class CutMeshV3 : MonoBehaviour
             }
             center /= thisGroupEdges.Count *2;
 
+            int sizeVertsBeforeCenter = partVerts.Count;
+
             if (planeNormal.y != 0)
             {
                 float normalDir = Mathf.Sign(planeNormal.y);
-                centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).y, (x - center).x)).ToList();
+                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).y, (x - center).x)));
             }
             else
             {
                 float normalDir = Mathf.Sign(planeNormal.z);
-                centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)).ToList();
+                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)));
             }
 
-            int sizeVertsBeforeCenter = partVerts.Count;
-            partVerts.AddRange(centerVerts);
             partVerts.Add(center);
 
             if (top)
