@@ -100,9 +100,9 @@ public class CutMeshV3 : MonoBehaviour
             Vector2 uv2 = uvs[tris[i + 1]];
             Vector2 uv3 = uvs[tris[i + 2]];
 
-            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]).normalized;
-            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]).normalized;
-            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]).normalized;
+            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]);
+            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]);
+            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]);
             bool[] intersected = isTriIntersectingPlane(worldp1, worldp2, worldp3);
 
             if (intersected[0] || intersected[1] || intersected[2]) //if triangle intersects with plane
