@@ -437,7 +437,7 @@ public class CutMeshV3 : MonoBehaviour
         {
             p1 = topPart.transform.InverseTransformPoint(p1);
             p2 = bottomPart.transform.InverseTransformPoint(p2);
-            n1 = topPart.transform.InverseTransformVector(n2).normalized * 3;
+            n1 = topPart.transform.InverseTransformVector(n1).normalized * 3;
             n2 = bottomPart.transform.InverseTransformVector(n2).normalized * 3;
 
             if (!top.Contains(p1))
@@ -469,7 +469,7 @@ public class CutMeshV3 : MonoBehaviour
             p2 = topPart.transform.InverseTransformPoint(p2);
             p1 = bottomPart.transform.InverseTransformPoint(p1);
             n2 = topPart.transform.InverseTransformVector(n2).normalized *3;
-            n1 = bottomPart.transform.InverseTransformVector(n2).normalized * 3;
+            n1 = bottomPart.transform.InverseTransformVector(n1).normalized * 3;
 
             top.Add(topNewVert);
             upUVs.Add(newUv);
