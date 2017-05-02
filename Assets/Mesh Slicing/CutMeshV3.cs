@@ -427,57 +427,72 @@ public class CutMeshV3 : MonoBehaviour
         Vector3 newNormal = new Vector3(0, 0, 0);
         HandleBaryCentric(newVert, ref newUv, ref newNormal, verts, uvs, normals);
 
+        //---------------------------------
+        Vector3 topNewVert = topPart.transform.InverseTransformPoint(newVert);
+        Vector3 botNewVert = bottomPart.transform.InverseTransformPoint(newVert);
+        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal);
+        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal);
+
         if (upOrDown > 0)
         {
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(p1), top))
+            p1 = topPart.transform.InverseTransformPoint(p1);
+            p2 = bottomPart.transform.InverseTransformPoint(p2);
+            n1 = topPart.transform.InverseTransformVector(n2).normalized * 3;
+            n2 = bottomPart.transform.InverseTransformVector(n2).normalized * 3;
+
+            if (!top.Contains(p1))
             {
+                top.Add(p1);
                 upUVs.Add(uv1);
-                upNormals.Add(topPart.transform.InverseTransformVector(n1).normalized * 3);
-            }
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(newVert), top))
-            {
-                upUVs.Add(newUv);
-                upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+                upNormals.Add(n1);
             }
 
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(newVert), bottom))
+            top.Add(topNewVert);
+            upUVs.Add(newUv);
+            upNormals.Add(topNewNormal);
+
+            bottom.Add(botNewVert);
+            downUVs.Add(newUv);
+            downNormals.Add(botNewNormal);
+
+            if (!bottom.Contains(p2))
             {
-                downUVs.Add(newUv);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(newNormal).normalized * 3);
-            }
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(p2), bottom))
-            {
+                bottom.Add(p2);
                 downUVs.Add(uv2);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(n2).normalized * 3);
+                downNormals.Add(n2);
             }
 
             return topPart.transform.InverseTransformPoint(newVert);
         }
         else
         {
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(newVert), top))
+            p2 = topPart.transform.InverseTransformPoint(p2);
+            p1 = bottomPart.transform.InverseTransformPoint(p1);
+            n2 = topPart.transform.InverseTransformVector(n2).normalized *3;
+            n1 = bottomPart.transform.InverseTransformVector(n2).normalized * 3;
+
+            top.Add(topNewVert);
+            upUVs.Add(newUv);
+            upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+
+            if (!top.Contains(p2))
             {
-                upUVs.Add(newUv);
-                upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
-            }
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(p2), top))
-            {
+                top.Add(p2);
                 upUVs.Add(uv2);
-                upNormals.Add(topPart.transform.InverseTransformVector(n2).normalized * 3);
+                upNormals.Add(n2);
             }
-
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(p1), bottom))
+            if (!bottom.Contains(p1))
             {
+                bottom.Add(p1);
                 downUVs.Add(uv1);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(n1).normalized * 3);
-            }
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(newVert), bottom))
-            {
-                downUVs.Add(newUv);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(newNormal).normalized * 3);
+                downNormals.Add(n1);
             }
 
-            return bottomPart.transform.InverseTransformPoint(newVert);
+            bottom.Add(botNewVert);
+            downUVs.Add(newUv);
+            downNormals.Add(botNewNormal);
+
+            return botNewVert;
         }
     }
 
@@ -529,19 +544,6 @@ public class CutMeshV3 : MonoBehaviour
         newNormal = normals[0] * a1 + normals[1] * a2 + normals[2] * a3;
         newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
     }
-
-    //Order is important so cant use HashSet, but since I'm using line->plane intersections
-    //and triangle has 3 lines, some points could be inserted twice, which cant happen on a triangle
-    bool AddUniquelyToList(Vector3 vertex, List<Vector3> list) 
-    {
-        if (!list.Contains(vertex))
-        {
-            list.Add(vertex);
-            return true;
-        }
-        return false;
-    }
-
 
 
 }
