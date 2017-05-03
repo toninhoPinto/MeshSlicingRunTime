@@ -11,6 +11,17 @@ public class OrderedHashSet<T> : KeyedCollection<T, T>
     {
         return item;
     }
+
+    public OrderedHashSet<T> ConcatIt(OrderedHashSet<T> dest)
+    {
+        for(int i = 0; i < dest.Count; i++)
+        {
+            if(!Contains(dest[i]))
+            Add(dest[i]);
+        }
+
+        return this;
+    }
 }
 
 public class CutMeshV5 : MonoBehaviour
@@ -124,14 +135,14 @@ public class CutMeshV5 : MonoBehaviour
         CreateParts(downVerts, downTris);
         Destroy(target);
     }
-
-    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> justForgiggles)
+    int counter = 0;
+    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed)
     {
 
         List<int> indexFound = new List<int>();
-        for (int w = 0; w < vertParts.Count; w++)
+        for (int w = 0; w < vertPartsHashed.Count; w++)
         {
-            if (justForgiggles[w].Contains(wp1) || justForgiggles[w].Contains(wp2) || justForgiggles[w].Contains(wp3))
+            if (vertPartsHashed[w].Contains(wp1) || vertPartsHashed[w].Contains(wp2) || vertPartsHashed[w].Contains(wp3))
             {
                 indexFound.Add(w);
             }
@@ -139,8 +150,10 @@ public class CutMeshV5 : MonoBehaviour
 
         if (indexFound.Count == 0)
         {
+            
             vertParts.Add(new List<Vector3>() { wp1, wp2, wp3 });
-            justForgiggles.Add(new OrderedHashSet<Vector3>() { wp1,  wp2, wp3 });
+            vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wp1, wp2, wp3 });
+            counter++;
         }
         else
         {
@@ -148,25 +161,29 @@ public class CutMeshV5 : MonoBehaviour
             vertParts[indexFound[0]].Add(wp2);
             vertParts[indexFound[0]].Add(wp3);
 
-            if(!justForgiggles[indexFound[0]].Contains(wp1))
-                justForgiggles[indexFound[0]].Add(wp1);
+            if(!vertPartsHashed[indexFound[0]].Contains(wp1))
+                vertPartsHashed[indexFound[0]].Add(wp1);
 
-            if (!justForgiggles[indexFound[0]].Contains(wp2))
-                justForgiggles[indexFound[0]].Add( wp2);
+            if (!vertPartsHashed[indexFound[0]].Contains(wp2))
+                vertPartsHashed[indexFound[0]].Add(wp2);
 
-            if (!justForgiggles[indexFound[0]].Contains(wp3))
-                justForgiggles[indexFound[0]].Add( wp3);
+            if (!vertPartsHashed[indexFound[0]].Contains(wp3))
+                vertPartsHashed[indexFound[0]].Add(wp3);
 
             for (int k = indexFound.Count-1; k > 0; k--)
             {
                 vertParts[indexFound[0]].AddRange(vertParts[indexFound[k]]);
-                justForgiggles[indexFound[0]].Union(justForgiggles[indexFound[k]]);
+                vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[indexFound[k]]);
 
+                /* fancy method, after debug put back in
                 List<Vector3> tmp = vertParts[vertParts.Count-1];
                 vertParts[vertParts.Count-1] = vertParts[indexFound[k]];
                 vertParts[indexFound[k]] = tmp;
                 vertParts.RemoveAt(vertParts.Count-1);
-                justForgiggles.RemoveAt(indexFound[k]);
+                */
+
+                vertParts.RemoveAt(indexFound[k]);
+                vertPartsHashed.RemoveAt(indexFound[k]);
             }
         }
         indexFound.Clear();
