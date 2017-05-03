@@ -1,8 +1,17 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.Profiling;
 using System.Linq;
+
+public class OrderedHashSet<T> : KeyedCollection<T, T>
+{
+    protected override T GetKeyForItem(T item)
+    {
+        return item;
+    }
+}
 
 public class CutMeshV5 : MonoBehaviour
 {
@@ -14,11 +23,11 @@ public class CutMeshV5 : MonoBehaviour
     Mesh myMesh;
 
     List<List<Vector3>> upVerts;
-    List<Dictionary<int, Vector3>> uphashVerts;
+    List<OrderedHashSet< Vector3>> uphashVerts;
     List<List<int>> upTris;
 
     List<List<Vector3>> downVerts;
-    List<Dictionary<int, Vector3>> downhashVerts;
+    List<OrderedHashSet< Vector3>> downhashVerts;
     List<List<int>> downTris;
 
     List<Edge> centerEdges;
@@ -59,11 +68,11 @@ public class CutMeshV5 : MonoBehaviour
         Vector3[] normals = targetMesh.normals;
 
         upVerts = new List<List<Vector3>>();
-        uphashVerts = new List<Dictionary<int, Vector3>>();
+        uphashVerts = new List<OrderedHashSet< Vector3>>();
         upTris = new List<List<int>>();
 
         downVerts = new List<List<Vector3>>();
-        downhashVerts = new List<Dictionary<int, Vector3>>();
+        downhashVerts = new List<OrderedHashSet<Vector3>>();
         downTris = new List<List<int>>();
 
         centerEdges = new List<Edge>();
@@ -94,11 +103,11 @@ public class CutMeshV5 : MonoBehaviour
             {
                 if (Mathf.Sign(Vector3.Dot(planeNormal, (worldp1 - planePoint))) > 0)
                 {//above
-                    FindSeparateMeshes(tris[i], tris[i+1], tris[i+2], worldp1, worldp2, worldp3, upVerts, uphashVerts);
+                    FindSeparateMeshes(worldp1, worldp2, worldp3, upVerts, uphashVerts);
                 }
                 else
                 {
-                    FindSeparateMeshes(tris[i], tris[i + 1], tris[i + 2], worldp1, worldp2, worldp3, downVerts, downhashVerts);
+                    FindSeparateMeshes(worldp1, worldp2, worldp3, downVerts, downhashVerts);
                 }
             }
             
@@ -116,14 +125,13 @@ public class CutMeshV5 : MonoBehaviour
         Destroy(target);
     }
 
-    void FindSeparateMeshes(int i1, int i2, int i3, Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<Dictionary<int, Vector3>> justForgiggles)
+    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet< Vector3>> justForgiggles)
     {
 
         List<int> indexFound = new List<int>();
         for (int w = 0; w < vertParts.Count; w++)
         {
-            //vertParts[w].BinarySearch(wp1) 
-            if (justForgiggles[w].ContainsKey(i1) || justForgiggles[w].ContainsKey(i2) || justForgiggles[w].ContainsKey(i3))
+            if (justForgiggles[w].Contains(wp1) || justForgiggles[w].Contains(wp2) || justForgiggles[w].Contains(wp3))
             {
                 indexFound.Add(w);
             }
@@ -132,7 +140,7 @@ public class CutMeshV5 : MonoBehaviour
         if (indexFound.Count == 0)
         {
             vertParts.Add(new List<Vector3>() { wp1, wp2, wp3 });
-            justForgiggles.Add(new Dictionary<int, Vector3>() { { i1, wp1}, { i2, wp2}, { i3,wp3} });
+            justForgiggles.Add(new OrderedHashSet<Vector3>() { wp1,  wp2, wp3 });
         }
         else
         {
@@ -140,12 +148,14 @@ public class CutMeshV5 : MonoBehaviour
             vertParts[indexFound[0]].Add(wp2);
             vertParts[indexFound[0]].Add(wp3);
 
-            if(!justForgiggles[indexFound[0]].ContainsKey(i1))
-                justForgiggles[indexFound[0]].Add(i1, wp1);
-            if (!justForgiggles[indexFound[0]].ContainsKey(i2))
-                justForgiggles[indexFound[0]].Add(i2, wp2);
-            if (!justForgiggles[indexFound[0]].ContainsKey(i3))
-                justForgiggles[indexFound[0]].Add(i3, wp3);
+            if(!justForgiggles[indexFound[0]].Contains(wp1))
+                justForgiggles[indexFound[0]].Add(wp1);
+
+            if (!justForgiggles[indexFound[0]].Contains(wp2))
+                justForgiggles[indexFound[0]].Add( wp2);
+
+            if (!justForgiggles[indexFound[0]].Contains(wp3))
+                justForgiggles[indexFound[0]].Add( wp3);
 
             for (int k = indexFound.Count-1; k > 0; k--)
             {
