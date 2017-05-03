@@ -125,7 +125,7 @@ public class CutMeshV5 : MonoBehaviour
         Destroy(target);
     }
 
-    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet< Vector3>> justForgiggles)
+    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> justForgiggles)
     {
 
         List<int> indexFound = new List<int>();
@@ -457,27 +457,28 @@ public class CutMeshV5 : MonoBehaviour
         Vector3 newNormal = new Vector3(0, 0, 0);
         HandleBaryCentric(newVert, ref newUv, ref newNormal, verts, uvs, normals);
 
+        //---------------------------------
         if (upOrDown > 0)
         {
 
-            if (AddUniquelyToList(p1, top))
+            if (!top.Contains(p1))
             {
+                top.Add(p1);
                 //upUVs.Add(uv1);
                 //upNormals.Add(n1);
             }
-            if (AddUniquelyToList(newVert, top))
-            {
-                //upUVs.Add(newUv);
-                //upNormals.Add(newNormal);
-            }
 
-            if (AddUniquelyToList(newVert, bottom))
+            top.Add(newVert);
+            //upUVs.Add(newUv);
+            //upNormals.Add(topNewNormal);
+
+            bottom.Add(newVert);
+            //downUVs.Add(newUv);
+            //downNormals.Add(botNewNormal);
+
+            if (!bottom.Contains(p2))
             {
-                //downUVs.Add(newUv);
-                //downNormals.Add(newNormal);
-            }
-            if (AddUniquelyToList(p2, bottom))
-            {
+                bottom.Add(p2);
                 //downUVs.Add(uv2);
                 //downNormals.Add(n2);
             }
@@ -486,27 +487,27 @@ public class CutMeshV5 : MonoBehaviour
         }
         else
         {
-            if (AddUniquelyToList(newVert, top))
+
+            top.Add(newVert);
+            //upUVs.Add(newUv);
+            //upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+
+            if (!top.Contains(p2))
             {
-                //upUVs.Add(newUv);
-                //upNormals.Add(newNormal);
-            }
-            if (AddUniquelyToList(p2, top))
-            {
+                top.Add(p2);
                 //upUVs.Add(uv2);
                 //upNormals.Add(n2);
             }
-
-            if (AddUniquelyToList(p1, bottom))
+            if (!bottom.Contains(p1))
             {
+                bottom.Add(p1);
                 //downUVs.Add(uv1);
                 //downNormals.Add(n1);
             }
-            if (AddUniquelyToList(newVert, bottom))
-            {
-                //downUVs.Add(newUv);
-                //downNormals.Add(newNormal);
-            }
+
+            bottom.Add(newVert);
+            //downUVs.Add(newUv);
+            //downNormals.Add(botNewNormal);
 
             return newVert;
         }
