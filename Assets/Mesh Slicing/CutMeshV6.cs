@@ -143,7 +143,7 @@ public class CutMeshV6 : MonoBehaviour
         Destroy(target);
     }
 
-    void FindSeparateMeshes(Vector3[] wPos, Vector3[] wNormals, Vector4[] wTangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+    void FindSeparateMeshes(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
 
@@ -163,7 +163,7 @@ public class CutMeshV6 : MonoBehaviour
             vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wPos[0], wPos[1], wPos[2] });
             normalParts.Add(new List<Vector3>() { wNormals[0], wNormals[1], wNormals[2] });
             UVParts.Add(new List<Vector2>() { UVs[0], UVs[1], UVs[2] });
-            tangentParts.Add(new List<Vector4>() { wTangents[0], wTangents[1], wTangents[2] });
+            tangentParts.Add(new List<Vector4>() { tangents[0], tangents[1], tangents[2] });
         }
         else
         {
@@ -179,9 +179,9 @@ public class CutMeshV6 : MonoBehaviour
             UVParts[indexFound[0]].Add(UVs[1]);
             UVParts[indexFound[0]].Add(UVs[2]);
 
-            tangentParts[indexFound[0]].Add(wTangents[0]);
-            tangentParts[indexFound[0]].Add(wTangents[1]);
-            tangentParts[indexFound[0]].Add(wTangents[2]);
+            tangentParts[indexFound[0]].Add(tangents[0]);
+            tangentParts[indexFound[0]].Add(tangents[1]);
+            tangentParts[indexFound[0]].Add(tangents[2]);
 
             if (!vertPartsHashed[indexFound[0]].Contains(wPos[0]))
                 vertPartsHashed[indexFound[0]].Add(wPos[0]);
@@ -378,7 +378,7 @@ public class CutMeshV6 : MonoBehaviour
                     {
                         partUvs[i].Add(new Vector2(0, 0));
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(0, 0, 0, 0));
+                        partTangents[i].Add(new Vector4(0, 0, 0, -1));
                     }
 
                 }
@@ -406,7 +406,6 @@ public class CutMeshV6 : MonoBehaviour
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
                 partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized * 3;
-                partTangents[i][k] = partTangents[i][k];
             }
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
@@ -514,12 +513,15 @@ public class CutMeshV6 : MonoBehaviour
     {
         Vector3 p1 = verts[pIndex1];
         Vector3 p2 = verts[pIndex2];
+
         Vector2 uv1 = uvs[pIndex1];
         Vector2 uv2 = uvs[pIndex2];
+
         Vector3 n1 = normals[pIndex1];
         Vector3 n2 = normals[pIndex2];
-        Vector3 t1 = tangents[pIndex1];
-        Vector3 t2 = tangents[pIndex2];
+
+        Vector4 t1 = tangents[pIndex1];
+        Vector4 t2 = tangents[pIndex2];
 
         Vector3 rayDir = (p2 - p1).normalized;
         float t = Vector3.Dot(planePoint - p1, planeNormal) / Vector3.Dot(rayDir, planeNormal);
@@ -592,17 +594,6 @@ public class CutMeshV6 : MonoBehaviour
             return newVert;
         }
     }
-
-    bool AddUniquelyToList(Vector3 vertex, List<Vector3> list) //order is important so cant use HashSet
-    {
-        if (!list.Contains(vertex))
-        {
-            list.Add(vertex);
-            return true;
-        }
-        return false;
-    }
-
 
 
 }
