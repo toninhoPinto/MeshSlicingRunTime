@@ -24,6 +24,25 @@ public class OrderedHashSet<T> : KeyedCollection<T, T>
     }
 }
 
+public class IntersectionLoop
+{
+    public List<Vector3> verts;
+    public Vector3 center;
+
+    public IntersectionLoop(List<int> index, List<Edge> edges)
+    {
+        verts = new List<Vector3>();
+        for (int k = 0; k < index.Count; k++)
+        {
+            verts.Add(edges[index[k]].start);
+            verts.Add(edges[index[k]].end);
+            center += edges[index[k]].start;
+            center += edges[index[k]].end;
+        }
+        center /= index.Count * 2;
+    }
+}
+
 public class CutMeshV5 : MonoBehaviour
 {
 
@@ -129,8 +148,15 @@ public class CutMeshV5 : MonoBehaviour
             return;
         }
         List<List<int>> groupedVerts = CenterVertsIntoParts();
-        //HandleIntersectedZone(upVerts, uphashVerts, upTris, null, null, groupedVerts, true);
-        //HandleIntersectedZone(downVerts, downhashVerts, downTris, null, null, groupedVerts, false);
+
+        List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
+        for(int i = 0; i < groupedVerts.Count; i++)
+        {
+            faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
+        }
+
+        HandleIntersectedZone(upVerts, uphashVerts, upTris, null, null, faceLoops, true);
+        HandleIntersectedZone(downVerts, downhashVerts, downTris, null, null, faceLoops, false);
         CreateParts(upVerts, upTris);
         CreateParts(downVerts, downTris);
         Destroy(target);
@@ -276,86 +302,70 @@ public class CutMeshV5 : MonoBehaviour
     }
 
     void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed, 
-        List<List<int>> partTris, List<Vector2> partUvs, List<Vector3> partNormals, List<List<int>> centerGroups, bool top)
+        List<List<int>> partTris, List<Vector2> partUvs, List<Vector3> partNormals, List<IntersectionLoop> centerGroups, bool top)
     {
-        //Debug.Log(centerGroups.Count);
-        for (int k = 0; k < centerGroups.Count; k++)
+
+        for (int i = 0; i < vertPartsHashed.Count; i++)
         {
-            //Debug.Log(k);
-            //Debug.Log(centerGroups[k].Count);
-            List<int> centerTris = new List<int>();
-
-            List<int> thisGroupEdges = centerGroups[k];
-            List<Vector3> centerVerts = new List<Vector3>();
-            Vector3 center = Vector3.zero;
-
-            for (int i = 0; i < thisGroupEdges.Count; i++)
+            partTris.Add(new List<int>());
+            for (int k = 0; k < partVerts[i].Count; k++)
             {
-                centerVerts.Add(centerEdges[thisGroupEdges[i]].start);
-                centerVerts.Add(centerEdges[thisGroupEdges[i]].end);
-                center += centerEdges[thisGroupEdges[i]].start;
-                center += centerEdges[thisGroupEdges[i]].end;
-            }
-            center /= thisGroupEdges.Count *2;
-
-            if (planeNormal.y != 0)
-            {
-                float normalDir = Mathf.Sign(planeNormal.y);
-                centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).y, (x - center).x)).ToList();
-            }
-            else
-            {
-                float normalDir = Mathf.Sign(planeNormal.z);
-                centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)).ToList();
+                partTris[i].Add(k);
             }
 
-            int sizeVertsBeforeCenter = partVerts.Count;
-
-            for(int j=0; j< vertPartsHashed.Count; j++)
+            for (int j=0; j< centerGroups.Count; j++)
             {
-                if (vertPartsHashed[j].Contains(centerVerts[0]))
+                List<Vector3> centerVerts = centerGroups[j].verts;
+                if (vertPartsHashed[i].Contains(centerVerts[0]))
                 {
-                    partVerts[j].AddRange(centerVerts);
-                    partVerts[j].Add(center);
+                    List<int> centerTris = new List<int>();
+
+                    Vector3 center = centerGroups[j].center;
+
+                    int sizeVertsBeforeCenter = partVerts[i].Count;
+                    if (planeNormal.y != 0)
+                    {
+                        float normalDir = Mathf.Sign(planeNormal.y);
+                        partVerts[i].AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)));
+                    }
+                    else
+                    {
+                        float normalDir = Mathf.Sign(planeNormal.z);
+                        partVerts[i].AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).y, (x - center).x)));
+                    }
+
+                    partVerts[i].Add(center);
+
+                    if (top)
+                    {
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        {
+                            centerTris.Add(k);
+                            centerTris.Add(k + 1);
+                            centerTris.Add(partVerts[i].Count - 1);
+                        }
+
+                        centerTris.Add(partVerts[i].Count - 2);
+                        centerTris.Add(sizeVertsBeforeCenter);
+                        centerTris.Add(partVerts[i].Count - 1);
+                    }
+                    else
+                    {
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        {
+                            centerTris.Add(k);
+                            centerTris.Add(partVerts[i].Count - 1);
+                            centerTris.Add(k + 1);
+                        }
+
+                        centerTris.Add(partVerts[i].Count - 2);
+                        centerTris.Add(partVerts[i].Count - 1);
+                        centerTris.Add(sizeVertsBeforeCenter);
+                    }
+                    partTris[i].AddRange(centerTris);
                 }
             }
-
-            /*
-            if (top)
-            {
-                for (int i = sizeVertsBeforeCenter; i < partVerts.Count - 1; i++)
-                {
-                    centerTris.Add(i);
-                    centerTris.Add(i + 1);
-                    centerTris.Add(partVerts.Count - 1);
-                }
-
-                centerTris.Add(partVerts.Count - 2);
-                centerTris.Add(sizeVertsBeforeCenter);
-                centerTris.Add(partVerts.Count - 1);
-            }
-            else
-            {
-                for (int i = sizeVertsBeforeCenter; i < partVerts.Count - 1; i++)
-                {
-                    centerTris.Add(i);
-                    centerTris.Add(partVerts.Count - 1);
-                    centerTris.Add(i + 1);
-                }
-
-                centerTris.Add(partVerts.Count - 2);
-                centerTris.Add(partVerts.Count - 1);
-                centerTris.Add(sizeVertsBeforeCenter);
-            }
-
-            for (int j = 0; j < vertPartsHashed.Count; j++)
-            {
-                if (vertPartsHashed[j].Contains(centerVerts[0]))
-                {
-                   partTris[j].AddRange(centerTris);
-                }
-            }
-            */
+           
 
             /*
             Vector3 normal;
@@ -378,11 +388,12 @@ public class CutMeshV5 : MonoBehaviour
         for (int i = 0; i < partVerts.Count; i++)
         {
             GameObject newPart = Instantiate(prefabPart);
-            partTris.Add(new List<int>());
+            //partTris.Add(new List<int>());
+            
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
-                partTris[i].Add(k);
+                //partTris[i].Add(k);
             }
 
             Debug.Log(partVerts[i].Count);
