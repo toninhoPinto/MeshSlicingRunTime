@@ -95,16 +95,17 @@ public class CutMeshV6 : MonoBehaviour
             Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]);
             Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]);
             Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]);
-            bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
 
-            Vector2 tangents1 = target.transform.TransformVector(tangents[tris[i]]);
-            Vector2 tangents2 = target.transform.TransformVector(tangents[tris[i + 1]]);
-            Vector2 tangents3 = target.transform.TransformVector(tangents[tris[i + 2]]);
+            Vector4 tangents1 = tangents[tris[i]];
+            Vector4 tangents2 = tangents[tris[i + 1]];
+            Vector4 tangents3 = tangents[tris[i + 2]];
 
             Vector2[] triUvs = { uv1, uv2, uv3 };
             Vector3[] triVerts = { worldp1, worldp2, worldp3 };
             Vector3[] triNormals = { normal1, normal2, normal3 };
             Vector4[] triTangents = { tangents1, tangents2, tangents3};
+
+            bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
             if (intersected[0] || intersected[1] || intersected[2])
             {
                 HandleTriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
@@ -405,7 +406,7 @@ public class CutMeshV6 : MonoBehaviour
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
                 partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized * 3;
-                partTangents[i][k] = newPart.transform.InverseTransformVector(partTangents[i][k]).normalized * 3;
+                partTangents[i][k] = partTangents[i][k];
             }
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
