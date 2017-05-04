@@ -430,8 +430,8 @@ public class CutMeshV3 : MonoBehaviour
         //---------------------------------
         Vector3 topNewVert = topPart.transform.InverseTransformPoint(newVert);
         Vector3 botNewVert = bottomPart.transform.InverseTransformPoint(newVert);
-        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal);
-        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal);
+        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal).normalized * 3;
+        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal).normalized * 3;
 
         if (upOrDown > 0)
         {

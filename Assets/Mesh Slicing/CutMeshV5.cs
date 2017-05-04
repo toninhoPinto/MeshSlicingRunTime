@@ -55,10 +55,14 @@ public class CutMeshV5 : MonoBehaviour
     List<List<Vector3>> upVerts;
     List<OrderedHashSet< Vector3>> uphashVerts;
     List<List<int>> upTris;
+    List<List<Vector2>> upUVs;
+    List<List<Vector3>> upNormals;
 
     List<List<Vector3>> downVerts;
     List<OrderedHashSet< Vector3>> downhashVerts;
     List<List<int>> downTris;
+    List<List<Vector2>> downUVs;
+    List<List<Vector3>> downNormals;
 
     List<Edge> centerEdges;
 
@@ -100,10 +104,14 @@ public class CutMeshV5 : MonoBehaviour
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet< Vector3>>();
         upTris = new List<List<int>>();
+        upUVs = new List<List<Vector2>>();
+        upNormals = new List<List<Vector3>>();
 
         downVerts = new List<List<Vector3>>();
         downhashVerts = new List<OrderedHashSet<Vector3>>();
         downTris = new List<List<int>>();
+        downUVs = new List<List<Vector2>>();
+        downNormals = new List<List<Vector3>>();
 
         centerEdges = new List<Edge>();
 
@@ -117,27 +125,27 @@ public class CutMeshV5 : MonoBehaviour
             Vector2 uv2 = uvs[tris[i + 1]];
             Vector2 uv3 = uvs[tris[i + 2]];
 
-            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]).normalized;
-            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]).normalized;
-            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]).normalized;
+            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]);
+            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]);
+            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]);
             bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
 
+            Vector2[] triUvs = { uv1, uv2, uv3 };
+            Vector3[] triVerts = { worldp1, worldp2, worldp3 };
+            Vector3[] triNormals = { normal1, normal2, normal3 };
             if (intersected[0] || intersected[1] || intersected[2])
             {
-                Vector2[] triUvs = { uv1, uv2, uv3 };
-                Vector3[] triVerts = { worldp1, worldp2, worldp3 };
-                Vector3[] triNormals = { normal1, normal2, normal3 };
                 HandleTriIntersectionPoints(intersected, triVerts, triUvs, triNormals);
             }
             else
             {
                 if (Mathf.Sign(Vector3.Dot(planeNormal, (worldp1 - planePoint))) > 0)
                 {//above
-                    FindSeparateMeshes(worldp1, worldp2, worldp3, upVerts, uphashVerts);
+                    FindSeparateMeshes(triVerts, triNormals, triUvs, upVerts, uphashVerts, upNormals, upUVs);
                 }
                 else
                 {
-                    FindSeparateMeshes(worldp1, worldp2, worldp3, downVerts, downhashVerts);
+                    FindSeparateMeshes(triVerts, triNormals, triUvs, downVerts, downhashVerts, downNormals, downUVs );
                 }
             }
             
@@ -155,20 +163,21 @@ public class CutMeshV5 : MonoBehaviour
             faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
         }
 
-        HandleIntersectedZone(upVerts, uphashVerts, upTris, null, null, faceLoops, true);
-        HandleIntersectedZone(downVerts, downhashVerts, downTris, null, null, faceLoops, false);
-        CreateParts(upVerts, upTris);
-        CreateParts(downVerts, downTris);
+        HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs ,upNormals, faceLoops, true);
+        HandleIntersectedZone(downVerts, downhashVerts, downTris, downUVs, downNormals, faceLoops, false);
+        CreateParts(upVerts, upTris, upNormals, upUVs);
+        CreateParts(downVerts, downTris, downNormals, downUVs);
         Destroy(target);
     }
 
-    void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed)
+    void FindSeparateMeshes(Vector3[] wPos, Vector3[] wNormals, Vector2[] UVs ,List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+        List<List<Vector3>> normalParts, List<List<Vector2>> UVParts)
     {
 
         List<int> indexFound = new List<int>();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
-            if (vertPartsHashed[w].Contains(wp1) || vertPartsHashed[w].Contains(wp2) || vertPartsHashed[w].Contains(wp3))
+            if (vertPartsHashed[w].Contains(wPos[0]) || vertPartsHashed[w].Contains(wPos[1]) || vertPartsHashed[w].Contains(wPos[2]))
             {
                 indexFound.Add(w);
             }
@@ -177,27 +186,39 @@ public class CutMeshV5 : MonoBehaviour
         if (indexFound.Count == 0)
         {
             
-            vertParts.Add(new List<Vector3>() { wp1, wp2, wp3 });
-            vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wp1, wp2, wp3 });
+            vertParts.Add(new List<Vector3>() { wPos[0], wPos[1], wPos[2] });
+            vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wPos[0], wPos[1], wPos[2] });
+            normalParts.Add(new List<Vector3>() { wNormals[0], wNormals[1], wNormals[2] });
+            UVParts.Add(new List<Vector2>() { UVs[0], UVs[1], UVs[2] });
         }
         else
         {
-            vertParts[indexFound[0]].Add(wp1);
-            vertParts[indexFound[0]].Add(wp2);
-            vertParts[indexFound[0]].Add(wp3);
+            vertParts[indexFound[0]].Add(wPos[0]);
+            vertParts[indexFound[0]].Add(wPos[1]);
+            vertParts[indexFound[0]].Add(wPos[2]);
 
-            if(!vertPartsHashed[indexFound[0]].Contains(wp1))
-                vertPartsHashed[indexFound[0]].Add(wp1);
+            normalParts[indexFound[0]].Add(wNormals[0]);
+            normalParts[indexFound[0]].Add(wNormals[1]);
+            normalParts[indexFound[0]].Add(wNormals[2]);
 
-            if (!vertPartsHashed[indexFound[0]].Contains(wp2))
-                vertPartsHashed[indexFound[0]].Add(wp2);
+            UVParts[indexFound[0]].Add(UVs[0]);
+            UVParts[indexFound[0]].Add(UVs[1]);
+            UVParts[indexFound[0]].Add(UVs[2]);
 
-            if (!vertPartsHashed[indexFound[0]].Contains(wp3))
-                vertPartsHashed[indexFound[0]].Add(wp3);
+            if (!vertPartsHashed[indexFound[0]].Contains(wPos[0]))
+                vertPartsHashed[indexFound[0]].Add(wPos[0]);
+
+            if (!vertPartsHashed[indexFound[0]].Contains(wPos[1]))
+                vertPartsHashed[indexFound[0]].Add(wPos[1]);
+
+            if (!vertPartsHashed[indexFound[0]].Contains(wPos[2]))
+                vertPartsHashed[indexFound[0]].Add(wPos[2]);
 
             for (int k = indexFound.Count-1; k > 0; k--)
             {
                 vertParts[indexFound[0]].AddRange(vertParts[indexFound[k]]);
+                normalParts[indexFound[0]].AddRange(normalParts[indexFound[k]]);
+                UVParts[indexFound[0]].AddRange(UVParts[indexFound[k]]);
                 vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[indexFound[k]]);
 
                 /* fancy method, after debug put back in
@@ -208,6 +229,8 @@ public class CutMeshV5 : MonoBehaviour
                 */
 
                 vertParts.RemoveAt(indexFound[k]);
+                normalParts.RemoveAt(indexFound[k]);
+                UVParts.RemoveAt(indexFound[k]);
                 vertPartsHashed.RemoveAt(indexFound[k]);
             }
         }
@@ -302,12 +325,13 @@ public class CutMeshV5 : MonoBehaviour
     }
 
     void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed, 
-        List<List<int>> partTris, List<Vector2> partUvs, List<Vector3> partNormals, List<IntersectionLoop> centerGroups, bool top)
+        List<List<int>> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<IntersectionLoop> centerGroups, bool top)
     {
 
         for (int i = 0; i < vertPartsHashed.Count; i++)
         {
             partTris.Add(new List<int>());
+
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partTris[i].Add(k);
@@ -363,49 +387,53 @@ public class CutMeshV5 : MonoBehaviour
                         centerTris.Add(sizeVertsBeforeCenter);
                     }
                     partTris[i].AddRange(centerTris);
+
+
+                    Vector3 normal;
+                    if (top)
+                        normal = -planeNormal;
+                    else
+                        normal = planeNormal;
+                    for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count; k++)
+                    {
+                        partUvs[i].Add(new Vector2(0, 0));
+                        partNormals[i].Add(normal);
+                    }
+
                 }
+
             }
            
-
-            /*
-            Vector3 normal;
-            if (top)
-                normal = topPart.transform.InverseTransformVector(-planeNormal);
-            else
-                normal = bottomPart.transform.InverseTransformVector(planeNormal);
-            for (int i = sizeVertsBeforeCenter; i < partVerts.Count; i++)
-            {
-                partUvs.Add(new Vector2(0, 0));
-                partNormals.Add(normal.normalized * 3);
-            }
-            */
         }
     }
 
-    void CreateParts(List<List<Vector3>> partVerts, List<List<int>> partTris)
+    void CreateParts(List<List<Vector3>> partVerts, List<List<int>> partTris, List<List<Vector3>> partNormals, List<List<Vector2>> partUvs)
     {
 
         for (int i = 0; i < partVerts.Count; i++)
         {
             GameObject newPart = Instantiate(prefabPart);
-            //partTris.Add(new List<int>());
             
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
-                //partTris[i].Add(k);
+                partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized * 3;
             }
 
             Debug.Log(partVerts[i].Count);
             Debug.Log(partTris[i].Count);
+            Debug.Log(partNormals[i].Count);
+            Debug.Log(partUvs[i].Count);
+
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
             newPartMesh.vertices = partVerts[i].ToArray();
             newPartMesh.triangles = partTris[i].ToArray();
+            newPartMesh.normals = partNormals[i].ToArray();
+            newPartMesh.uv = partUvs[i].ToArray();
             newPartMesh.RecalculateBounds();
         }
     }
-
 
     bool[] DoesTriIntersectPlane(Vector3 p1, Vector3 p2, Vector3 p3)
     {
@@ -422,7 +450,10 @@ public class CutMeshV5 : MonoBehaviour
     {
         List<Vector3> tmpUpVerts = new List<Vector3>();
         List<Vector3> tmpDownVerts = new List<Vector3>();
-        bool secondLine = false;
+        List<Vector3> tmpUpNormals = new List<Vector3>();
+        List<Vector3> tmpDownNormals = new List<Vector3>();
+        List<Vector2> tmpUpUvs = new List<Vector2>();
+        List<Vector2> tmpDownUvs = new List<Vector2>();
 
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, verts[0] - planePoint));
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, verts[1] - planePoint));
@@ -433,37 +464,40 @@ public class CutMeshV5 : MonoBehaviour
 
         if (intersections[0])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown, 0, 1, verts, uvs, normals, tmpUpVerts, tmpDownVerts);
+            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown, 0, 1, verts, uvs, normals, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs);
             newVectorIndex++;
         }
         if (intersections[1])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown2, 1, 2, verts, uvs, normals, tmpUpVerts, tmpDownVerts);
+            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown2, 1, 2, verts, uvs, normals, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs);
             newVectorIndex++;
         }
         if (intersections[2])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown3, 2, 0, verts, uvs, normals, tmpUpVerts, tmpDownVerts);
+            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown3, 2, 0, verts, uvs, normals, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs);
         }
 
         //only 2 new vectors in all cases
         centerEdges.Add(new Edge(newVectors[0], newVectors[1]));
 
-        HandleTriOrder(tmpUpVerts, tmpDownVerts);
+        HandleTriOrder(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs);
     }
 
-    void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts)
+    void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs)
     {
-        int upLastInsert = upVerts.Count;
-        int downLastInsert = downVerts.Count;
+        FindSeparateMeshes(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs);
 
-        FindSeparateMeshes(tmpDownVerts[0], tmpDownVerts[1], tmpDownVerts[2], downVerts, downhashVerts);
         if(tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            FindSeparateMeshes(tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3], downVerts, downhashVerts);
+            FindSeparateMeshes(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] }, 
+                new Vector3[] { tmpDownNormals[0], tmpDownNormals[2], tmpDownNormals[3] },
+                new Vector2[] { tmpDownUvs[0], tmpDownUvs[2], tmpDownUvs[3] }, downVerts, downhashVerts, downNormals, downUVs);
 
-        FindSeparateMeshes(tmpUpVerts[0], tmpUpVerts[1], tmpUpVerts[2], upVerts, uphashVerts);
+        FindSeparateMeshes(tmpUpVerts.ToArray(), tmpUpNormals.ToArray(), tmpUpUvs.ToArray(), upVerts, uphashVerts, upNormals, upUVs);
+
         if (tmpUpVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            FindSeparateMeshes(tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3], upVerts, uphashVerts);
+            FindSeparateMeshes(new Vector3[] { tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3] },
+                new Vector3[] { tmpUpNormals[0], tmpUpNormals[2], tmpUpNormals[3] },
+                new Vector2[] { tmpUpUvs[0], tmpUpUvs[2], tmpUpUvs[3] }, upVerts, uphashVerts, upNormals, upUVs);
     }
 
     void HandleBaryCentric(Vector3 newPoint, ref Vector2 newUV, ref Vector3 newNormal, Vector3[] points, Vector2[] uvs, Vector3[] normals)
@@ -481,7 +515,7 @@ public class CutMeshV5 : MonoBehaviour
         newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
     }
 
-    Vector3 AddToCorrectSideList(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, List<Vector3> top, List<Vector3> bottom)
+    Vector3 AddToCorrectSideList(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs)
     {
         Vector3 p1 = verts[pIndex1];
         Vector3 p2 = verts[pIndex2];
@@ -504,23 +538,23 @@ public class CutMeshV5 : MonoBehaviour
             if (!top.Contains(p1))
             {
                 top.Add(p1);
-                //upUVs.Add(uv1);
-                //upNormals.Add(n1);
+                tmpUpUvs.Add(uv1);
+                tmpUpNormals.Add(n1);
             }
 
             top.Add(newVert);
-            //upUVs.Add(newUv);
-            //upNormals.Add(topNewNormal);
+            tmpUpUvs.Add(newUv);
+            tmpUpNormals.Add(newNormal);
 
             bottom.Add(newVert);
-            //downUVs.Add(newUv);
-            //downNormals.Add(botNewNormal);
+            tmpDownUvs.Add(newUv);
+            tmpDownNormals.Add(newNormal);
 
             if (!bottom.Contains(p2))
             {
                 bottom.Add(p2);
-                //downUVs.Add(uv2);
-                //downNormals.Add(n2);
+                tmpDownUvs.Add(uv2);
+                tmpDownNormals.Add(n2);
             }
 
             return newVert;
@@ -529,25 +563,25 @@ public class CutMeshV5 : MonoBehaviour
         {
 
             top.Add(newVert);
-            //upUVs.Add(newUv);
-            //upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+            tmpUpUvs.Add(newUv);
+            tmpUpNormals.Add(newNormal);
 
             if (!top.Contains(p2))
             {
                 top.Add(p2);
-                //upUVs.Add(uv2);
-                //upNormals.Add(n2);
+                tmpUpUvs.Add(uv2);
+                tmpUpNormals.Add(n2);
             }
             if (!bottom.Contains(p1))
             {
                 bottom.Add(p1);
-                //downUVs.Add(uv1);
-                //downNormals.Add(n1);
+                tmpDownUvs.Add(uv1);
+                tmpDownNormals.Add(n1);
             }
 
             bottom.Add(newVert);
-            //downUVs.Add(newUv);
-            //downNormals.Add(botNewNormal);
+            tmpDownUvs.Add(newUv);
+            tmpDownNormals.Add(newNormal);
 
             return newVert;
         }
