@@ -128,14 +128,14 @@ public class CutMeshV5 : MonoBehaviour
         {
             return;
         }
-        //List<List<int>> groupedVerts = CenterVertsIntoParts();
-        //HandleIntersectedZone(upVerts, upTris, upUVs, upNormals, groupedVerts, true);
-        //HandleIntersectedZone(downVerts, downTris, downUVs, downNormals, groupedVerts, false);
+        List<List<int>> groupedVerts = CenterVertsIntoParts();
+        //HandleIntersectedZone(upVerts, uphashVerts, upTris, null, null, groupedVerts, true);
+        //HandleIntersectedZone(downVerts, downhashVerts, downTris, null, null, groupedVerts, false);
         CreateParts(upVerts, upTris);
         CreateParts(downVerts, downTris);
         Destroy(target);
     }
-    int counter = 0;
+
     void FindSeparateMeshes(Vector3 wp1, Vector3 wp2, Vector3 wp3, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed)
     {
 
@@ -153,7 +153,6 @@ public class CutMeshV5 : MonoBehaviour
             
             vertParts.Add(new List<Vector3>() { wp1, wp2, wp3 });
             vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wp1, wp2, wp3 });
-            counter++;
         }
         else
         {
@@ -187,16 +186,6 @@ public class CutMeshV5 : MonoBehaviour
             }
         }
         indexFound.Clear();
-    }
-
-    bool MyContains(List<Vector3> list, Vector3 check)
-    {
-        for(int i = 0; i <list.Count; i++)
-        {
-            if (list[i] == check)
-                return true;
-        }
-        return false;
     }
 
     List<List<int>> CenterVertsIntoParts()
@@ -286,7 +275,8 @@ public class CutMeshV5 : MonoBehaviour
         return groupedEdgesConnected;
     }
 
-    void HandleIntersectedZone(List<Vector3> partVerts, List<int> partTris, List<Vector2> partUvs, List<Vector3> partNormals, List<List<int>> centerGroups, bool top)
+    void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed, 
+        List<List<int>> partTris, List<Vector2> partUvs, List<Vector3> partNormals, List<List<int>> centerGroups, bool top)
     {
         //Debug.Log(centerGroups.Count);
         for (int k = 0; k < centerGroups.Count; k++)
@@ -320,9 +310,17 @@ public class CutMeshV5 : MonoBehaviour
             }
 
             int sizeVertsBeforeCenter = partVerts.Count;
-            partVerts.AddRange(centerVerts);
-            partVerts.Add(center);
 
+            for(int j=0; j< vertPartsHashed.Count; j++)
+            {
+                if (vertPartsHashed[j].Contains(centerVerts[0]))
+                {
+                    partVerts[j].AddRange(centerVerts);
+                    partVerts[j].Add(center);
+                }
+            }
+
+            /*
             if (top)
             {
                 for (int i = sizeVertsBeforeCenter; i < partVerts.Count - 1; i++)
@@ -350,7 +348,14 @@ public class CutMeshV5 : MonoBehaviour
                 centerTris.Add(sizeVertsBeforeCenter);
             }
 
-            partTris.AddRange(centerTris);
+            for (int j = 0; j < vertPartsHashed.Count; j++)
+            {
+                if (vertPartsHashed[j].Contains(centerVerts[0]))
+                {
+                   partTris[j].AddRange(centerTris);
+                }
+            }
+            */
 
             /*
             Vector3 normal;
@@ -380,6 +385,8 @@ public class CutMeshV5 : MonoBehaviour
                 partTris[i].Add(k);
             }
 
+            Debug.Log(partVerts[i].Count);
+            Debug.Log(partTris[i].Count);
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
             newPartMesh.vertices = partVerts[i].ToArray();
@@ -439,8 +446,13 @@ public class CutMeshV5 : MonoBehaviour
         int upLastInsert = upVerts.Count;
         int downLastInsert = downVerts.Count;
 
-        //FindSeparateMeshes(tmpDownVerts[0], tmpDownVerts[1], tmpDownVerts[2], downVerts, downhashVerts);
-        //FindSeparateMeshes(tmpUpVerts[0], tmpUpVerts[1], tmpUpVerts[2], upVerts, uphashVerts);
+        FindSeparateMeshes(tmpDownVerts[0], tmpDownVerts[1], tmpDownVerts[2], downVerts, downhashVerts);
+        if(tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
+            FindSeparateMeshes(tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3], downVerts, downhashVerts);
+
+        FindSeparateMeshes(tmpUpVerts[0], tmpUpVerts[1], tmpUpVerts[2], upVerts, uphashVerts);
+        if (tmpUpVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
+            FindSeparateMeshes(tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3], upVerts, uphashVerts);
     }
 
     void HandleBaryCentric(Vector3 newPoint, ref Vector2 newUV, ref Vector3 newNormal, Vector3[] points, Vector2[] uvs, Vector3[] normals)
