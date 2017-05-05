@@ -372,9 +372,9 @@ public class CutMeshV6 : MonoBehaviour
 
                     Vector3 normal;
                     if (top)
-                        normal = -planeNormal;
-                    else
                         normal = planeNormal;
+                    else
+                        normal = -planeNormal;
                     for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count; k++)
                     {
                         partUvs[i].Add(new Vector2(0, 0));
