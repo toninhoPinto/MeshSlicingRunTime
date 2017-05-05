@@ -35,6 +35,11 @@ public class CutMeshV6 : MonoBehaviour
         myMesh = GetComponent<MeshFilter>().mesh;
     }
 
+    void OnTriggerEnter(Collider other)
+    {
+        target = other.gameObject;
+    }
+
     public void Cut()
     {
         if (target == null)
@@ -413,6 +418,7 @@ public class CutMeshV6 : MonoBehaviour
             newPartMesh.uv = partUvs[i].ToArray();
             newPartMesh.RecalculateBounds();
             newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
+            newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
         }
     }
 
