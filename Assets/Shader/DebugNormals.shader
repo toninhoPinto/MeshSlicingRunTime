@@ -16,6 +16,7 @@
 			#pragma fragment frag
 			// make fog work
 			#pragma multi_compile_fog
+			#pragma enable_d3d11_debug_symbols
 			
 			#include "UnityCG.cginc"
 
@@ -43,8 +44,7 @@
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				UNITY_TRANSFER_FOG(o,o.vertex);
-				//o.normals = mul(v.normals, unity_WorldToObject);
-				o.normals = v.normals;
+				o.normals = mul(v.normals, unity_WorldToObject);
 				return o;
 			}
 			

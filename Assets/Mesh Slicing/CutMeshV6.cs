@@ -92,9 +92,9 @@ public class CutMeshV6 : MonoBehaviour
             Vector2 uv2 = uvs[tris[i + 1]];
             Vector2 uv3 = uvs[tris[i + 2]];
 
-            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]);
-            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]);
-            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]);
+            Vector3 normal1 = normals[tris[i]];
+            Vector3 normal2 = normals[tris[i + 1]];
+            Vector3 normal3 = normals[tris[i + 2]];
 
             Vector4 tangents1 = tangents[tris[i]];
             Vector4 tangents2 = tangents[tris[i + 1]];
@@ -395,19 +395,13 @@ public class CutMeshV6 : MonoBehaviour
         for (int i = 0; i < partVerts.Count; i++)
         {
             GameObject newPart = Instantiate(prefabPart);
-
-            /*
-            Debug.Log(partVerts[i].Count);
-            Debug.Log(partTris[i].Count);
-            Debug.Log(partNormals[i].Count);
-            Debug.Log(partUvs[i].Count);
-            Debug.Log(partTangents[i].Count);
-            */
+            newPart.transform.localScale = target.transform.localScale;
+            newPart.transform.rotation = target.transform.rotation;
 
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
-                partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized ;
+                partNormals[i][k] = partNormals[i][k];
             }
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
