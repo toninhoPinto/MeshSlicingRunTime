@@ -201,6 +201,7 @@ public class CutMeshV6 : MonoBehaviour
                 vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[indexFound[k]]);
 
                 /* fancy method, after debug put back in
+                 * 
                 List<Vector3> tmp = vertParts[vertParts.Count-1];
                 vertParts[vertParts.Count-1] = vertParts[indexFound[k]];
                 vertParts[indexFound[k]] = tmp;
@@ -395,17 +396,18 @@ public class CutMeshV6 : MonoBehaviour
         {
             GameObject newPart = Instantiate(prefabPart);
 
+            /*
             Debug.Log(partVerts[i].Count);
             Debug.Log(partTris[i].Count);
             Debug.Log(partNormals[i].Count);
             Debug.Log(partUvs[i].Count);
             Debug.Log(partTangents[i].Count);
-
+            */
 
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
-                partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized * 3;
+                partNormals[i][k] = newPart.transform.InverseTransformVector(partNormals[i][k]).normalized ;
             }
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
@@ -416,6 +418,7 @@ public class CutMeshV6 : MonoBehaviour
             newPartMesh.tangents = partTangents[i].ToArray();
             newPartMesh.uv = partUvs[i].ToArray();
             newPartMesh.RecalculateBounds();
+            newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
         }
     }
 

@@ -1,4 +1,4 @@
-﻿Shader "Debug/DebugNormals"
+﻿Shader "Debug/DebugBinormals"
 {
 	Properties
 	{
@@ -23,7 +23,8 @@
 			{
 				float4 vertex : POSITION;
 				float2 uv : TEXCOORD0;
-				float4 normals : NORMAL;
+				float3 normal : NORMAL;
+				float4 tangent : TANGENT;
 			};
 
 			struct v2f
@@ -31,7 +32,7 @@
 				float2 uv : TEXCOORD0;
 				UNITY_FOG_COORDS(1)
 				float4 vertex : SV_POSITION;
-				float3 normals : NORMAL;
+				float4 color : COLOR;
 			};
 
 			sampler2D _MainTex;
@@ -43,14 +44,17 @@
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 				UNITY_TRANSFER_FOG(o,o.vertex);
-				//o.normals = mul(v.normals, unity_WorldToObject);
-				o.normals = v.normals;
+
+				// calculate bitangent
+				float3 bitangent = cross(v.normal, v.tangent.xyz) * v.tangent.w;
+				o.color.xyz = bitangent * 0.5 + 0.5;
+				o.color.w = 1.0;
 				return o;
 			}
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				return float4(i.normals*.5+.5,1);
+				return i.color;
 			}
 			ENDCG
 		}
