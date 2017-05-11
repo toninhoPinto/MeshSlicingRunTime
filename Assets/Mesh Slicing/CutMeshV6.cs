@@ -1,9 +1,11 @@
 ﻿using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
 using UnityEngine.Profiling;
 using System.Linq;
+using System.Linq.Expressions;
 
 public class CutMeshV6 : MonoBehaviour
 {
@@ -72,7 +74,14 @@ public class CutMeshV6 : MonoBehaviour
         Vector4[] tangents = targetMesh.tangents;
 
         upVerts = new List<List<Vector3>>();
-        uphashVerts = new List<OrderedHashSet< Vector3>>();
+        uphashVerts = new List<OrderedHashSet<Vector3>>();
+
+        /*
+         * private readonly Dictionary<ComponentTypes, List<ComponentEcs>> _componentPools =
+            new Dictionary<ComponentTypes, List<ComponentEcs>>(Enum.GetNames(typeof(ComponentTypes)).Length, new FastEnumIntEqualityComparer<ComponentTypes>());
+         * 
+         */
+
         upTris = new List<List<int>>();
         upUVs = new List<List<Vector2>>();
         upNormals = new List<List<Vector3>>();
@@ -163,9 +172,13 @@ public class CutMeshV6 : MonoBehaviour
 
         if (indexFound.Count == 0)
         {
-            
+            if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
+                Debug.Log("how the fuck");
+
+            if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
+                Debug.Log("how the fuck2");
             vertParts.Add(new List<Vector3>() { wPos[0], wPos[1], wPos[2] });
-            vertPartsHashed.Add(new OrderedHashSet<Vector3>() { wPos[0], wPos[1], wPos[2] });
+            vertPartsHashed.Add(new OrderedHashSet<Vector3>(new VectorEqualityComparer()) { wPos[0], wPos[1], wPos[2] });
             normalParts.Add(new List<Vector3>() { wNormals[0], wNormals[1], wNormals[2] });
             UVParts.Add(new List<Vector2>() { UVs[0], UVs[1], UVs[2] });
             tangentParts.Add(new List<Vector4>() { tangents[0], tangents[1], tangents[2] });
@@ -411,11 +424,11 @@ public class CutMeshV6 : MonoBehaviour
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
-            newPartMesh.vertices = partVerts[i].ToArray();
-            newPartMesh.triangles = partTris[i].ToArray();
-            newPartMesh.normals = partNormals[i].ToArray();
-            newPartMesh.tangents = partTangents[i].ToArray();
-            newPartMesh.uv = partUvs[i].ToArray();
+            newPartMesh.SetVertices(partVerts[i]);
+            newPartMesh.SetTriangles(partTris[i],0);
+            newPartMesh.SetNormals(partNormals[i]);
+            newPartMesh.SetTangents(partTangents[i]);
+            newPartMesh.SetUVs(0,partUvs[i]);
             newPartMesh.RecalculateBounds();
             newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;

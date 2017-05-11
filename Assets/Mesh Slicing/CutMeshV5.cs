@@ -5,24 +5,6 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using System.Linq;
 
-public class OrderedHashSet<T> : KeyedCollection<T, T>
-{
-    protected override T GetKeyForItem(T item)
-    {
-        return item;
-    }
-
-    public OrderedHashSet<T> ConcatIt(OrderedHashSet<T> dest)
-    {
-        for(int i = 0; i < dest.Count; i++)
-        {
-            if(!Contains(dest[i]))
-            Add(dest[i]);
-        }
-
-        return this;
-    }
-}
 
 public class IntersectionLoop
 {
