@@ -401,6 +401,7 @@ public class CutMeshV6 : MonoBehaviour
 
 
                     Vector3 normal;
+                   
                     if (top)
                         normal = planeNormal;
                     else
@@ -409,7 +410,7 @@ public class CutMeshV6 : MonoBehaviour
                     {
                         partUvs[i].Add(new Vector2(0, 0));
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(0, 0, 0, -1));
+                        partTangents[i].Add(new Vector4(0, 1, 0, 1));
                     }
 
                 }
