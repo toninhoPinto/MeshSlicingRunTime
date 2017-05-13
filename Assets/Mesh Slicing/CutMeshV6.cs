@@ -79,12 +79,6 @@ public class CutMeshV6 : MonoBehaviour
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet<Vector3>>();
 
-        /*
-         * private readonly Dictionary<ComponentTypes, List<ComponentEcs>> _componentPools =
-            new Dictionary<ComponentTypes, List<ComponentEcs>>(Enum.GetNames(typeof(ComponentTypes)).Length, new FastEnumIntEqualityComparer<ComponentTypes>());
-         * 
-         */
-
         upTris = new List<List<int>>();
         upUVs = new List<List<Vector2>>();
         upNormals = new List<List<Vector3>>();
@@ -152,7 +146,8 @@ public class CutMeshV6 : MonoBehaviour
         {
             faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
         }
-
+        HandleBodyTris(upVerts, upTris);
+        HandleBodyTris(downVerts, downTris);
         HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
         HandleIntersectedZone(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
         CreateParts(upVerts, upTris, upNormals, upTangents, upUVs);
@@ -189,9 +184,9 @@ public class CutMeshV6 : MonoBehaviour
             if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
                 Debug.Log("how the fuck2");
             vertParts.Add(listPooler.GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
-            vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]) );
+            vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]));
             normalParts.Add(listPooler.GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
-            UVParts.Add(listPooler.GetPooledListVector2( UVs[0], UVs[1], UVs[2] ));
+            UVParts.Add(listPooler.GetPooledListVector2(UVs[0], UVs[1], UVs[2]));
             tangentParts.Add(listPooler.GetPooledListVector4(tangents[0], tangents[1], tangents[2]));
         }
         else
@@ -246,6 +241,19 @@ public class CutMeshV6 : MonoBehaviour
             }
         }
         listPooler.PoolList(indexFound);
+    }
+
+    void HandleBodyTris(List<List<Vector3>> partVerts, List<List<int>> partTris)
+    {
+        for (int i = 0; i < partVerts.Count; i++)
+        {
+            partTris.Add(listPooler.GetPooledList());
+
+            for (int k = 0; k < partVerts[i].Count; k++)
+            {
+                partTris[i].Add(k);
+            }
+        }
     }
 
     List<List<int>> CenterVertsIntoParts()
@@ -341,19 +349,12 @@ public class CutMeshV6 : MonoBehaviour
 
         for (int i = 0; i < vertPartsHashed.Count; i++)
         {
-            partTris.Add(new List<int>());
-
-            for (int k = 0; k < partVerts[i].Count; k++)
-            {
-                partTris[i].Add(k);
-            }
-
             for (int j = 0; j < centerGroups.Count; j++)
             {
                 List<Vector3> centerVerts = centerGroups[j].verts;
                 if (vertPartsHashed[i].Contains(centerVerts[0]))
                 {
-                    List<int> centerTris = new List<int>();
+                    List<int> centerTris = listPooler.GetPooledList();
 
                     Vector3 center = centerGroups[j].center;
 
@@ -398,10 +399,10 @@ public class CutMeshV6 : MonoBehaviour
                         centerTris.Add(sizeVertsBeforeCenter);
                     }
                     partTris[i].AddRange(centerTris);
-
+                    listPooler.PoolList(centerTris);
 
                     Vector3 normal;
-                   
+
                     if (top)
                         normal = planeNormal;
                     else
@@ -410,7 +411,7 @@ public class CutMeshV6 : MonoBehaviour
                     {
                         partUvs[i].Add(new Vector2(0, 0));
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(0, 1, 0, 1));
+                        partTangents[i].Add(new Vector4(0, 1, 0, -1));
                     }
 
                 }

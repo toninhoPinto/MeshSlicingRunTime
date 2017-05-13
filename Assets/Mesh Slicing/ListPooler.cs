@@ -7,6 +7,11 @@ public class ListPooler {
     List<List<Vector3>> poolingList;
     List<List<Vector4>> poolingListVector4;
     List<List<Vector2>> poolingListVector2;
+
+    List<BetterLinkedList<Vector3>> poolingLinkedList;
+    List<BetterLinkedList<Vector4>> poolingLinkedListVector4;
+    List<BetterLinkedList<Vector2>> poolingLinkedListVector2;
+
     List<List<int>> poolingListIndexes;
     List<OrderedHashSet<Vector3>> poolingHashSets;
     VectorEqualityComparer comparer;
@@ -17,6 +22,11 @@ public class ListPooler {
         poolingList = new List<List<Vector3>>();
         poolingListVector4 = new List<List<Vector4>>();
         poolingListVector2 = new List<List<Vector2>>();
+
+        poolingLinkedList = new List<BetterLinkedList<Vector3>>();
+        poolingLinkedListVector4 = new List<BetterLinkedList<Vector4>>();
+        poolingLinkedListVector2 = new List<BetterLinkedList<Vector2>>();
+
         poolingListIndexes = new List<List<int>>();
         poolingHashSets = new List<OrderedHashSet<Vector3>>();
         comparer = new VectorEqualityComparer();
@@ -111,6 +121,72 @@ public class ListPooler {
         return toBeReturned;
     }
 
+
+    public BetterLinkedList<Vector3> GetPooledLinkedListVector3(Vector3 a, Vector3 b, Vector3 c)
+    {
+        int size = poolingLinkedList.Count;
+
+        BetterLinkedList<Vector3> toBeReturned;
+
+        if (size == 0)
+            toBeReturned = new BetterLinkedList<Vector3>();
+        else
+        {
+            toBeReturned = poolingLinkedList[size - 1];
+            poolingLinkedList.RemoveAt(size - 1);
+        }
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    public BetterLinkedList<Vector2> GetPooledLinkedListVector2(Vector2 a, Vector2 b, Vector2 c)
+    {
+        int size = poolingLinkedListVector2.Count;
+
+        BetterLinkedList<Vector2> toBeReturned;
+
+        if (size == 0)
+            toBeReturned = new BetterLinkedList<Vector2>();
+        else
+        {
+            toBeReturned = poolingLinkedListVector2[size - 1];
+            poolingLinkedListVector2.RemoveAt(size - 1);
+        }
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    public BetterLinkedList<Vector4> GetPooledLinkedListVector4(Vector4 a, Vector4 b, Vector4 c)
+    {
+        int size = poolingLinkedListVector4.Count;
+
+        BetterLinkedList<Vector4> toBeReturned;
+
+        if (size == 0)
+            toBeReturned = new BetterLinkedList<Vector4>();
+        else
+        {
+            toBeReturned = poolingLinkedListVector4[size - 1];
+            poolingLinkedListVector4.RemoveAt(size - 1);
+        }
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+
+
     public List<int> GetPooledList()
     {
         int size = poolingListIndexes.Count;
@@ -163,6 +239,24 @@ public class ListPooler {
     {
         dedList.Clear();
         poolingListIndexes.Add(dedList);
+    }
+
+    public void PoolList(BetterLinkedList<Vector3> dedList)
+    {
+        dedList.Clear();
+        poolingLinkedList.Add(dedList);
+    }
+
+    public void PoolList(BetterLinkedList<Vector2> dedList)
+    {
+        dedList.Clear();
+        poolingLinkedListVector2.Add(dedList);
+    }
+
+    public void PoolList(BetterLinkedList<Vector4> dedList)
+    {
+        dedList.Clear();
+        poolingLinkedListVector4.Add(dedList);
     }
 
     public void PoolHashSet(OrderedHashSet<Vector3> dedHashSet)

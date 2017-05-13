@@ -4,6 +4,6 @@ using UnityEngine;
 
 public class ProtoMesh {
 
-    List<List<int>> tris;
-
+    List<int> mainTris;
+    List<int> otherTris;
 }
