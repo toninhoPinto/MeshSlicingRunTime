@@ -4,33 +4,52 @@ using UnityEngine;
 
 public class BetterLinkedList<T>  {
 
-    int count;
+    public int Count;
     public Node<T> start;
     public Node<T> end;
 
 	public BetterLinkedList()
     {
-        count = 0;
+        Count = 0;
     }
 
     public void Add(T newElement)
     {
         Node<T> newNode = new Node<T>(newElement);
 
-        if (count == 0)
+        if (Count == 0)
         {
             start = newNode;
         }
 
         end.SetNext(newNode);
         end = newNode;
-        count++;
+        Count++;
     }
 
     public void Merge(BetterLinkedList<T> list)
     {
         end.SetNext(list.start);
-        count += list.count;
+        Count += list.Count;
+    }
+
+    public void Clear()
+    {
+
+    }
+
+    public List<T> ToList()
+    {
+        List<T> returnList = new List<T>();
+
+        Node<T> head = start;
+        while(head != end)
+        {
+            returnList.Add(head.value);
+            head = head.nextNode;
+        }
+
+        return returnList;
     }
 
 }
@@ -38,8 +57,8 @@ public class BetterLinkedList<T>  {
 
 public class Node<T>{
 
-    Node<T> nextNode;
-    T value;
+    public Node<T> nextNode;
+    public T value;
 
     public Node(T value)
     {
