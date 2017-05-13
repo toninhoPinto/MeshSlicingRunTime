@@ -31,22 +31,13 @@ public class CutMeshV6 : MonoBehaviour
     List<List<Vector4>> downTangents;
 
     List<Edge> centerEdges;
-    List<List<Vector3>> poolingList;
-    List<List<Vector4>> poolingListVector4;
-    List<List<Vector2>> poolingListVector2;
-    List<List<int>> poolingListIndexes;
-    List<OrderedHashSet<Vector3>> poolingHashSets;
-    VectorEqualityComparer comparer;
+
+    ListPooler listPooler;
 
     void Start()
     {
         myMesh = GetComponent<MeshFilter>().mesh;
-        poolingList = new List<List<Vector3>>();
-        poolingListVector4 = new List<List<Vector4>>();
-        poolingListVector2 = new List<List<Vector2>>();
-        poolingListIndexes = new List<List<int>>();
-        poolingHashSets = new List<OrderedHashSet<Vector3>>();
-        comparer = new VectorEqualityComparer();
+        listPooler = new ListPooler();
     }
 
     void OnTriggerEnter(Collider other)
@@ -169,155 +160,6 @@ public class CutMeshV6 : MonoBehaviour
         Destroy(target);
     }
 
-    List<Vector3> GetPooledListVector3()
-    {
-        int size = poolingList.Count;
-
-        if (size == 0)
-            return new List<Vector3>();
-
-        List<Vector3> toBeReturned = poolingList[size - 1];
-        poolingList.RemoveAt(size - 1);
-
-        return toBeReturned;
-    }
-
-    List<Vector3> GetPooledListVector3(Vector3 a, Vector3 b, Vector3 c)
-    {
-        int size = poolingList.Count;
-
-        if (size == 0)
-            return new List<Vector3>() { a, b, c };
-
-        List<Vector3> toBeReturned = poolingList[size - 1];
-        poolingList.RemoveAt(size - 1);
-
-        toBeReturned.Add(a);
-        toBeReturned.Add(b);
-        toBeReturned.Add(c);
-
-        return toBeReturned;
-    }
-
-    List<Vector2> GetPooledListVector2()
-    {
-        int size = poolingListVector2.Count;
-
-        if (size == 0)
-            return new List<Vector2>() {};
-
-        List<Vector2> toBeReturned = poolingListVector2[size - 1];
-        poolingListVector2.RemoveAt(size - 1);
-        return toBeReturned;
-    }
-
-    List<Vector2> GetPooledListVector2(Vector2 a, Vector2 b, Vector2 c)
-    {
-        int size = poolingListVector2.Count;
-
-        if (size == 0)
-            return new List<Vector2>() { a, b, c };
-
-        List<Vector2> toBeReturned = poolingListVector2[size - 1];
-        poolingListVector2.RemoveAt(size - 1);
-
-        toBeReturned.Add(a);
-        toBeReturned.Add(b);
-        toBeReturned.Add(c);
-
-        return toBeReturned;
-    }
-
-    List<Vector4> GetPooledListVector4()
-    {
-        int size = poolingListVector4.Count;
-
-        if (size == 0)
-            return new List<Vector4>() ;
-
-        List<Vector4> toBeReturned = poolingListVector4[size - 1];
-        poolingListVector4.RemoveAt(size - 1);
-
-        return toBeReturned;
-    }
-
-    List<Vector4> GetPooledListVector4(Vector4 a, Vector4 b, Vector4 c)
-    {
-        int size = poolingListVector4.Count;
-
-        if (size == 0)
-            return new List<Vector4>() { a, b, c };
-
-        List<Vector4> toBeReturned = poolingListVector4[size - 1];
-        poolingListVector4.RemoveAt(size - 1);
-
-        toBeReturned.Add(a);
-        toBeReturned.Add(b);
-        toBeReturned.Add(c);
-
-        return toBeReturned;
-    }
-
-    List<int> GetPooledList()
-    {
-        int size = poolingListIndexes.Count;
-
-        if (size == 0)
-            return new List<int>();
-
-        List<int> toBeReturned = poolingListIndexes[size - 1];
-        poolingListIndexes.RemoveAt(size - 1);
-
-        return toBeReturned;
-    }
-
-    OrderedHashSet<Vector3> GetPooledHashSet(Vector3 a, Vector3 b, Vector3 c)
-    {
-        int size = poolingHashSets.Count;
-
-        if (size == 0)
-            return new OrderedHashSet<Vector3>(comparer) { a, b, c };
-
-        OrderedHashSet<Vector3> toBeReturned = poolingHashSets[size - 1];
-        poolingHashSets.RemoveAt(size - 1);
-
-        toBeReturned.Add(a);
-        toBeReturned.Add(b);
-        toBeReturned.Add(c);
-
-        return toBeReturned;
-    }
-
-    void PoolList(List<Vector3> dedList)
-    {
-        dedList.Clear();
-        poolingList.Add(dedList);
-    }
-
-    void PoolList(List<Vector4> dedList)
-    {
-        dedList.Clear();
-        poolingListVector4.Add(dedList);
-    }
-
-    void PoolList(List<Vector2> dedList)
-    {
-        dedList.Clear();
-        poolingListVector2.Add(dedList);
-    }
-
-    void PoolList(List<int> dedList)
-    {
-        dedList.Clear();
-        poolingListIndexes.Add(dedList);
-    }
-
-    void PoolHashSet(OrderedHashSet<Vector3> dedHashSet)
-    {
-        dedHashSet.Clear();
-        poolingHashSets.Add(dedHashSet);
-    }
-
     void MyRemoveAt<T>(List<List<T>> list, int k)
     {
         List<T> tmp = list[list.Count - 1];
@@ -330,7 +172,7 @@ public class CutMeshV6 : MonoBehaviour
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
 
-        List<int> indexFound = GetPooledList();
+        List<int> indexFound = listPooler.GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
             if (vertPartsHashed[w].Contains(wPos[0]) || vertPartsHashed[w].Contains(wPos[1]) || vertPartsHashed[w].Contains(wPos[2]))
@@ -346,11 +188,11 @@ public class CutMeshV6 : MonoBehaviour
 
             if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
                 Debug.Log("how the fuck2");
-            vertParts.Add(GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
-            vertPartsHashed.Add(GetPooledHashSet(wPos[0], wPos[1], wPos[2]) );
-            normalParts.Add(GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
-            UVParts.Add(GetPooledListVector2( UVs[0], UVs[1], UVs[2] ));
-            tangentParts.Add(GetPooledListVector4(tangents[0], tangents[1], tangents[2]));
+            vertParts.Add(listPooler.GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
+            vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]) );
+            normalParts.Add(listPooler.GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
+            UVParts.Add(listPooler.GetPooledListVector2( UVs[0], UVs[1], UVs[2] ));
+            tangentParts.Add(listPooler.GetPooledListVector4(tangents[0], tangents[1], tangents[2]));
         }
         else
         {
@@ -390,11 +232,11 @@ public class CutMeshV6 : MonoBehaviour
                 tangentParts[indexFound[0]].AddRange(tangentParts[index]);
                 vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[index]);
 
-                PoolList(vertParts[index]);
-                PoolList(normalParts[index]);
-                PoolList(UVParts[index]);
-                PoolList(tangentParts[index]);
-                PoolHashSet(vertPartsHashed[index]);
+                listPooler.PoolList(vertParts[index]);
+                listPooler.PoolList(normalParts[index]);
+                listPooler.PoolList(UVParts[index]);
+                listPooler.PoolList(tangentParts[index]);
+                listPooler.PoolHashSet(vertPartsHashed[index]);
 
                 MyRemoveAt(vertParts, index);
                 MyRemoveAt(normalParts, index);
@@ -403,7 +245,7 @@ public class CutMeshV6 : MonoBehaviour
                 vertPartsHashed.RemoveAt(index);
             }
         }
-        PoolList(indexFound);
+        listPooler.PoolList(indexFound);
     }
 
     List<List<int>> CenterVertsIntoParts()
@@ -618,14 +460,14 @@ public class CutMeshV6 : MonoBehaviour
 
     void HandleTriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
     {
-        List<Vector3> tmpUpVerts = GetPooledListVector3();
-        List<Vector3> tmpDownVerts = GetPooledListVector3();
-        List<Vector3> tmpUpNormals = GetPooledListVector3();
-        List<Vector3> tmpDownNormals = GetPooledListVector3();
-        List<Vector2> tmpUpUvs = GetPooledListVector2();
-        List<Vector2> tmpDownUvs = GetPooledListVector2();
-        List<Vector4> tmpUpTangents = GetPooledListVector4();
-        List<Vector4> tmpDownTangents = GetPooledListVector4();
+        List<Vector3> tmpUpVerts = listPooler.GetPooledListVector3();
+        List<Vector3> tmpDownVerts = listPooler.GetPooledListVector3();
+        List<Vector3> tmpUpNormals = listPooler.GetPooledListVector3();
+        List<Vector3> tmpDownNormals = listPooler.GetPooledListVector3();
+        List<Vector2> tmpUpUvs = listPooler.GetPooledListVector2();
+        List<Vector2> tmpDownUvs = listPooler.GetPooledListVector2();
+        List<Vector4> tmpUpTangents = listPooler.GetPooledListVector4();
+        List<Vector4> tmpDownTangents = listPooler.GetPooledListVector4();
 
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, verts[0] - planePoint));
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, verts[1] - planePoint));
@@ -657,14 +499,14 @@ public class CutMeshV6 : MonoBehaviour
 
         HandleTriOrder(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents);
 
-        PoolList(tmpUpVerts);
-        PoolList(tmpDownVerts);
-        PoolList(tmpUpNormals);
-        PoolList(tmpDownNormals);
-        PoolList(tmpUpUvs);
-        PoolList(tmpDownUvs);
-        PoolList(tmpUpTangents);
-        PoolList(tmpDownTangents);
+        listPooler.PoolList(tmpUpVerts);
+        listPooler.PoolList(tmpDownVerts);
+        listPooler.PoolList(tmpUpNormals);
+        listPooler.PoolList(tmpDownNormals);
+        listPooler.PoolList(tmpUpUvs);
+        listPooler.PoolList(tmpDownUvs);
+        listPooler.PoolList(tmpUpTangents);
+        listPooler.PoolList(tmpDownTangents);
     }
 
     void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
