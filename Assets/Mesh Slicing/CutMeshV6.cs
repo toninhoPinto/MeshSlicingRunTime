@@ -18,14 +18,14 @@ public class CutMeshV6 : MonoBehaviour
 
     List<List<Vector3>> upVerts;
     List<OrderedHashSet<Vector3>> uphashVerts;
-    List<List<int>> upTris;
+    List<ProtoMesh> upTris;
     List<List<Vector2>> upUVs;
     List<List<Vector3>> upNormals;
     List<List<Vector4>> upTangents;
 
     List<List<Vector3>> downVerts;
     List<OrderedHashSet<Vector3>> downhashVerts;
-    List<List<int>> downTris;
+    List<ProtoMesh> downTris;
     List<List<Vector2>> downUVs;
     List<List<Vector3>> downNormals;
     List<List<Vector4>> downTangents;
@@ -79,14 +79,14 @@ public class CutMeshV6 : MonoBehaviour
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet<Vector3>>();
 
-        upTris = new List<List<int>>();
+        upTris = new List<ProtoMesh>();
         upUVs = new List<List<Vector2>>();
         upNormals = new List<List<Vector3>>();
         upTangents = new List<List<Vector4>>();
 
         downVerts = new List<List<Vector3>>();
         downhashVerts = new List<OrderedHashSet<Vector3>>();
-        downTris = new List<List<int>>();
+        downTris = new List<ProtoMesh>();
         downUVs = new List<List<Vector2>>();
         downNormals = new List<List<Vector3>>();
         downTangents = new List<List<Vector4>>();
@@ -243,16 +243,16 @@ public class CutMeshV6 : MonoBehaviour
         listPooler.PoolList(indexFound);
     }
 
-    void HandleBodyTris(List<List<Vector3>> partVerts, List<List<int>> partTris)
+    void HandleBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris)
     {
         for (int i = 0; i < partVerts.Count; i++)
         {
-            partTris.Add(listPooler.GetPooledList());
-
+            List<int> newListTris = listPooler.GetPooledList();
             for (int k = 0; k < partVerts[i].Count; k++)
             {
-                partTris[i].Add(k);
+                newListTris.Add(k);
             }
+            partTris.Add(new ProtoMesh(newListTris, listPooler.GetPooledList()));
         }
     }
 
@@ -344,7 +344,7 @@ public class CutMeshV6 : MonoBehaviour
     }
 
     void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
-        List<List<int>> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
+        List<ProtoMesh> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
     {
 
         for (int i = 0; i < vertPartsHashed.Count; i++)
@@ -398,7 +398,7 @@ public class CutMeshV6 : MonoBehaviour
                         centerTris.Add(partVerts[i].Count - 1);
                         centerTris.Add(sizeVertsBeforeCenter);
                     }
-                    partTris[i].AddRange(centerTris);
+                    partTris[i].SubmeshTris.AddRange(centerTris);
                     listPooler.PoolList(centerTris);
 
                     Vector3 normal;
@@ -421,7 +421,7 @@ public class CutMeshV6 : MonoBehaviour
         }
     }
 
-    void CreateParts(List<List<Vector3>> partVerts, List<List<int>> partTris, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<List<Vector2>> partUvs)
+    void CreateParts(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<List<Vector2>> partUvs)
     {
 
         for (int i = 0; i < partVerts.Count; i++)
@@ -438,13 +438,16 @@ public class CutMeshV6 : MonoBehaviour
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
+            newPartMesh.subMeshCount = 2;
             newPartMesh.SetVertices(partVerts[i]);
-            newPartMesh.SetTriangles(partTris[i], 0);
+            newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+            newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
             newPartMesh.SetNormals(partNormals[i]);
             newPartMesh.SetTangents(partTangents[i]);
             newPartMesh.SetUVs(0, partUvs[i]);
             newPartMesh.RecalculateBounds();
             newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
+            newPart.GetComponent<Renderer>().materials[1] = target.GetComponent<Renderer>().material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
         }
     }
