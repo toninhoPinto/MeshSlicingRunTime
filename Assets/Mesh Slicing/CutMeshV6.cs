@@ -17,24 +17,36 @@ public class CutMeshV6 : MonoBehaviour
     Mesh myMesh;
 
     List<List<Vector3>> upVerts;
-    List<OrderedHashSet< Vector3>> uphashVerts;
+    List<OrderedHashSet<Vector3>> uphashVerts;
     List<List<int>> upTris;
     List<List<Vector2>> upUVs;
     List<List<Vector3>> upNormals;
     List<List<Vector4>> upTangents;
 
     List<List<Vector3>> downVerts;
-    List<OrderedHashSet< Vector3>> downhashVerts;
+    List<OrderedHashSet<Vector3>> downhashVerts;
     List<List<int>> downTris;
     List<List<Vector2>> downUVs;
     List<List<Vector3>> downNormals;
     List<List<Vector4>> downTangents;
 
     List<Edge> centerEdges;
+    List<List<Vector3>> poolingList;
+    List<List<Vector4>> poolingListVector4;
+    List<List<Vector2>> poolingListVector2;
+    List<List<int>> poolingListIndexes;
+    List<OrderedHashSet<Vector3>> poolingHashSets;
+    VectorEqualityComparer comparer;
 
     void Start()
     {
         myMesh = GetComponent<MeshFilter>().mesh;
+        poolingList = new List<List<Vector3>>();
+        poolingListVector4 = new List<List<Vector4>>();
+        poolingListVector2 = new List<List<Vector2>>();
+        poolingListIndexes = new List<List<int>>();
+        poolingHashSets = new List<OrderedHashSet<Vector3>>();
+        comparer = new VectorEqualityComparer();
     }
 
     void OnTriggerEnter(Collider other)
@@ -117,7 +129,7 @@ public class CutMeshV6 : MonoBehaviour
             Vector2[] triUvs = { uv1, uv2, uv3 };
             Vector3[] triVerts = { worldp1, worldp2, worldp3 };
             Vector3[] triNormals = { normal1, normal2, normal3 };
-            Vector4[] triTangents = { tangents1, tangents2, tangents3};
+            Vector4[] triTangents = { tangents1, tangents2, tangents3 };
 
             bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
             if (intersected[0] || intersected[1] || intersected[2])
@@ -135,7 +147,7 @@ public class CutMeshV6 : MonoBehaviour
                     FindSeparateMeshes(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
                 }
             }
-            
+
         }
 
         if (centerEdges.Count == 0)
@@ -145,23 +157,180 @@ public class CutMeshV6 : MonoBehaviour
         List<List<int>> groupedVerts = CenterVertsIntoParts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
-        for(int i = 0; i < groupedVerts.Count; i++)
+        for (int i = 0; i < groupedVerts.Count; i++)
         {
             faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
         }
 
-        HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs ,upNormals, upTangents, faceLoops, true);
+        HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
         HandleIntersectedZone(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
         CreateParts(upVerts, upTris, upNormals, upTangents, upUVs);
         CreateParts(downVerts, downTris, downNormals, downTangents, downUVs);
         Destroy(target);
     }
 
+    List<Vector3> GetPooledListVector3()
+    {
+        int size = poolingList.Count;
+
+        if (size == 0)
+            return new List<Vector3>();
+
+        List<Vector3> toBeReturned = poolingList[size - 1];
+        poolingList.RemoveAt(size - 1);
+
+        return toBeReturned;
+    }
+
+    List<Vector3> GetPooledListVector3(Vector3 a, Vector3 b, Vector3 c)
+    {
+        int size = poolingList.Count;
+
+        if (size == 0)
+            return new List<Vector3>() { a, b, c };
+
+        List<Vector3> toBeReturned = poolingList[size - 1];
+        poolingList.RemoveAt(size - 1);
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    List<Vector2> GetPooledListVector2()
+    {
+        int size = poolingListVector2.Count;
+
+        if (size == 0)
+            return new List<Vector2>() {};
+
+        List<Vector2> toBeReturned = poolingListVector2[size - 1];
+        poolingListVector2.RemoveAt(size - 1);
+        return toBeReturned;
+    }
+
+    List<Vector2> GetPooledListVector2(Vector2 a, Vector2 b, Vector2 c)
+    {
+        int size = poolingListVector2.Count;
+
+        if (size == 0)
+            return new List<Vector2>() { a, b, c };
+
+        List<Vector2> toBeReturned = poolingListVector2[size - 1];
+        poolingListVector2.RemoveAt(size - 1);
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    List<Vector4> GetPooledListVector4()
+    {
+        int size = poolingListVector4.Count;
+
+        if (size == 0)
+            return new List<Vector4>() ;
+
+        List<Vector4> toBeReturned = poolingListVector4[size - 1];
+        poolingListVector4.RemoveAt(size - 1);
+
+        return toBeReturned;
+    }
+
+    List<Vector4> GetPooledListVector4(Vector4 a, Vector4 b, Vector4 c)
+    {
+        int size = poolingListVector4.Count;
+
+        if (size == 0)
+            return new List<Vector4>() { a, b, c };
+
+        List<Vector4> toBeReturned = poolingListVector4[size - 1];
+        poolingListVector4.RemoveAt(size - 1);
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    List<int> GetPooledList()
+    {
+        int size = poolingListIndexes.Count;
+
+        if (size == 0)
+            return new List<int>();
+
+        List<int> toBeReturned = poolingListIndexes[size - 1];
+        poolingListIndexes.RemoveAt(size - 1);
+
+        return toBeReturned;
+    }
+
+    OrderedHashSet<Vector3> GetPooledHashSet(Vector3 a, Vector3 b, Vector3 c)
+    {
+        int size = poolingHashSets.Count;
+
+        if (size == 0)
+            return new OrderedHashSet<Vector3>(comparer) { a, b, c };
+
+        OrderedHashSet<Vector3> toBeReturned = poolingHashSets[size - 1];
+        poolingHashSets.RemoveAt(size - 1);
+
+        toBeReturned.Add(a);
+        toBeReturned.Add(b);
+        toBeReturned.Add(c);
+
+        return toBeReturned;
+    }
+
+    void PoolList(List<Vector3> dedList)
+    {
+        dedList.Clear();
+        poolingList.Add(dedList);
+    }
+
+    void PoolList(List<Vector4> dedList)
+    {
+        dedList.Clear();
+        poolingListVector4.Add(dedList);
+    }
+
+    void PoolList(List<Vector2> dedList)
+    {
+        dedList.Clear();
+        poolingListVector2.Add(dedList);
+    }
+
+    void PoolList(List<int> dedList)
+    {
+        dedList.Clear();
+        poolingListIndexes.Add(dedList);
+    }
+
+    void PoolHashSet(OrderedHashSet<Vector3> dedHashSet)
+    {
+        dedHashSet.Clear();
+        poolingHashSets.Add(dedHashSet);
+    }
+
+    void MyRemoveAt<T>(List<List<T>> list, int k)
+    {
+        List<T> tmp = list[list.Count - 1];
+        list[list.Count - 1] = list[k];
+        list[k] = tmp;
+        list.RemoveAt(list.Count - 1);
+    }
+
     void FindSeparateMeshes(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
 
-        List<int> indexFound = new List<int>();
+        List<int> indexFound = GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
             if (vertPartsHashed[w].Contains(wPos[0]) || vertPartsHashed[w].Contains(wPos[1]) || vertPartsHashed[w].Contains(wPos[2]))
@@ -177,11 +346,11 @@ public class CutMeshV6 : MonoBehaviour
 
             if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
                 Debug.Log("how the fuck2");
-            vertParts.Add(new List<Vector3>() { wPos[0], wPos[1], wPos[2] });
-            vertPartsHashed.Add(new OrderedHashSet<Vector3>(new VectorEqualityComparer()) { wPos[0], wPos[1], wPos[2] });
-            normalParts.Add(new List<Vector3>() { wNormals[0], wNormals[1], wNormals[2] });
-            UVParts.Add(new List<Vector2>() { UVs[0], UVs[1], UVs[2] });
-            tangentParts.Add(new List<Vector4>() { tangents[0], tangents[1], tangents[2] });
+            vertParts.Add(GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
+            vertPartsHashed.Add(GetPooledHashSet(wPos[0], wPos[1], wPos[2]) );
+            normalParts.Add(GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
+            UVParts.Add(GetPooledListVector2( UVs[0], UVs[1], UVs[2] ));
+            tangentParts.Add(GetPooledListVector4(tangents[0], tangents[1], tangents[2]));
         }
         else
         {
@@ -210,30 +379,31 @@ public class CutMeshV6 : MonoBehaviour
             if (!vertPartsHashed[indexFound[0]].Contains(wPos[2]))
                 vertPartsHashed[indexFound[0]].Add(wPos[2]);
 
-            for (int k = indexFound.Count-1; k > 0; k--)
+            int index;
+            for (int k = indexFound.Count - 1; k > 0; k--)
             {
-                vertParts[indexFound[0]].AddRange(vertParts[indexFound[k]]);
-                normalParts[indexFound[0]].AddRange(normalParts[indexFound[k]]);
-                UVParts[indexFound[0]].AddRange(UVParts[indexFound[k]]);
-                tangentParts[indexFound[0]].AddRange(tangentParts[indexFound[k]]);
-                vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[indexFound[k]]);
+                index = indexFound[k];
 
-                /* fancy method, after debug put back in
-                 * 
-                List<Vector3> tmp = vertParts[vertParts.Count-1];
-                vertParts[vertParts.Count-1] = vertParts[indexFound[k]];
-                vertParts[indexFound[k]] = tmp;
-                vertParts.RemoveAt(vertParts.Count-1);
-                */
+                vertParts[indexFound[0]].AddRange(vertParts[index]);
+                normalParts[indexFound[0]].AddRange(normalParts[index]);
+                UVParts[indexFound[0]].AddRange(UVParts[index]);
+                tangentParts[indexFound[0]].AddRange(tangentParts[index]);
+                vertPartsHashed[indexFound[0]].ConcatIt(vertPartsHashed[index]);
 
-                vertParts.RemoveAt(indexFound[k]);
-                normalParts.RemoveAt(indexFound[k]);
-                UVParts.RemoveAt(indexFound[k]);
-                tangentParts.RemoveAt(indexFound[k]);
-                vertPartsHashed.RemoveAt(indexFound[k]);
+                PoolList(vertParts[index]);
+                PoolList(normalParts[index]);
+                PoolList(UVParts[index]);
+                PoolList(tangentParts[index]);
+                PoolHashSet(vertPartsHashed[index]);
+
+                MyRemoveAt(vertParts, index);
+                MyRemoveAt(normalParts, index);
+                MyRemoveAt(UVParts, index);
+                MyRemoveAt(tangentParts, index);
+                vertPartsHashed.RemoveAt(index);
             }
         }
-        indexFound.Clear();
+        PoolList(indexFound);
     }
 
     List<List<int>> CenterVertsIntoParts()
@@ -256,8 +426,8 @@ public class CutMeshV6 : MonoBehaviour
             for (int i = 0; i < centerEdges.Count; i++)
             {
 
-                if (EdgeA.Equals(EdgeB) && tmpEdgesConnected.Count>1)// did a loop
-                { 
+                if (EdgeA.Equals(EdgeB) && tmpEdgesConnected.Count > 1)// did a loop
+                {
                     groupedEdgesConnected.Add(tmpEdgesConnected);
                     finished = true;
                     for (int j = 0; j < visited.Length; j++)
@@ -323,7 +493,7 @@ public class CutMeshV6 : MonoBehaviour
         return groupedEdgesConnected;
     }
 
-    void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed, 
+    void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<int>> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
     {
 
@@ -336,7 +506,7 @@ public class CutMeshV6 : MonoBehaviour
                 partTris[i].Add(k);
             }
 
-            for (int j=0; j< centerGroups.Count; j++)
+            for (int j = 0; j < centerGroups.Count; j++)
             {
                 List<Vector3> centerVerts = centerGroups[j].verts;
                 if (vertPartsHashed[i].Contains(centerVerts[0]))
@@ -403,7 +573,7 @@ public class CutMeshV6 : MonoBehaviour
                 }
 
             }
-           
+
         }
     }
 
@@ -425,10 +595,10 @@ public class CutMeshV6 : MonoBehaviour
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
             newPartMesh.SetVertices(partVerts[i]);
-            newPartMesh.SetTriangles(partTris[i],0);
+            newPartMesh.SetTriangles(partTris[i], 0);
             newPartMesh.SetNormals(partNormals[i]);
             newPartMesh.SetTangents(partTangents[i]);
-            newPartMesh.SetUVs(0,partUvs[i]);
+            newPartMesh.SetUVs(0, partUvs[i]);
             newPartMesh.RecalculateBounds();
             newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
@@ -448,14 +618,14 @@ public class CutMeshV6 : MonoBehaviour
 
     void HandleTriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
     {
-        List<Vector3> tmpUpVerts = new List<Vector3>();
-        List<Vector3> tmpDownVerts = new List<Vector3>();
-        List<Vector3> tmpUpNormals = new List<Vector3>();
-        List<Vector3> tmpDownNormals = new List<Vector3>();
-        List<Vector2> tmpUpUvs = new List<Vector2>();
-        List<Vector2> tmpDownUvs = new List<Vector2>();
-        List<Vector4> tmpUpTangents = new List<Vector4>();
-        List<Vector4> tmpDownTangents = new List<Vector4>();
+        List<Vector3> tmpUpVerts = GetPooledListVector3();
+        List<Vector3> tmpDownVerts = GetPooledListVector3();
+        List<Vector3> tmpUpNormals = GetPooledListVector3();
+        List<Vector3> tmpDownNormals = GetPooledListVector3();
+        List<Vector2> tmpUpUvs = GetPooledListVector2();
+        List<Vector2> tmpDownUvs = GetPooledListVector2();
+        List<Vector4> tmpUpTangents = GetPooledListVector4();
+        List<Vector4> tmpDownTangents = GetPooledListVector4();
 
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, verts[0] - planePoint));
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, verts[1] - planePoint));
@@ -486,6 +656,15 @@ public class CutMeshV6 : MonoBehaviour
         centerEdges.Add(new Edge(newVectors[0], newVectors[1]));
 
         HandleTriOrder(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents);
+
+        PoolList(tmpUpVerts);
+        PoolList(tmpDownVerts);
+        PoolList(tmpUpNormals);
+        PoolList(tmpDownNormals);
+        PoolList(tmpUpUvs);
+        PoolList(tmpDownUvs);
+        PoolList(tmpUpTangents);
+        PoolList(tmpDownTangents);
     }
 
     void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
@@ -493,8 +672,8 @@ public class CutMeshV6 : MonoBehaviour
     {
         FindSeparateMeshes(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownTangs.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs, downTangents);
 
-        if(tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            FindSeparateMeshes(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] }, 
+        if (tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
+            FindSeparateMeshes(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] },
                 new Vector3[] { tmpDownNormals[0], tmpDownNormals[2], tmpDownNormals[3] },
                 new Vector4[] { tmpDownTangs[0], tmpDownTangs[2], tmpDownTangs[3] },
                 new Vector2[] { tmpDownUvs[0], tmpDownUvs[2], tmpDownUvs[3] }, downVerts, downhashVerts, downNormals, downUVs, downTangents);
@@ -524,7 +703,7 @@ public class CutMeshV6 : MonoBehaviour
         newTangent = tangents[0] * a1 + tangents[1] * a2 + tangents[2] * a3;
     }
 
-    Vector3 AddToCorrectSideList(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents, 
+    Vector3 AddToCorrectSideList(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents,
         List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs, List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
     {
         Vector3 p1 = verts[pIndex1];
