@@ -119,7 +119,7 @@ public class CutMeshV6 : MonoBehaviour
             bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
             if (intersected[0] || intersected[1] || intersected[2])
             {
-                HandleTriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
+                TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
             }
             else
             {
@@ -139,6 +139,10 @@ public class CutMeshV6 : MonoBehaviour
         {
             return;
         }
+
+        CreateBodyTris(upVerts, upTris);
+        CreateBodyTris(downVerts, downTris);
+
         List<List<int>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
@@ -147,11 +151,8 @@ public class CutMeshV6 : MonoBehaviour
             faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
         }
 
-        CreateBodyTris(upVerts, upTris);
-        CreateBodyTris(downVerts, downTris);
-
-        HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
-        HandleIntersectedZone(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
+        CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
+        CreateHullMeshFromEdgeLoop(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
 
         CreateFinalGameObjects(upVerts, upTris, upNormals, upTangents, upUVs);
         CreateFinalGameObjects(downVerts, downTris, downNormals, downTangents, downUVs);
@@ -347,7 +348,7 @@ public class CutMeshV6 : MonoBehaviour
         return groupedEdgesConnected;
     }
 
-    void HandleIntersectedZone(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+    void CreateHullMeshFromEdgeLoop(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<ProtoMesh> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
     {
 
@@ -471,7 +472,7 @@ public class CutMeshV6 : MonoBehaviour
         return intersections;
     }
 
-    void HandleTriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
+    void TriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
     {
         List<Vector3> tmpUpVerts = listPooler.GetPooledListVector3();
         List<Vector3> tmpDownVerts = listPooler.GetPooledListVector3();
@@ -491,26 +492,26 @@ public class CutMeshV6 : MonoBehaviour
 
         if (intersections[0])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown, 0, 1, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+            newVectors[newVectorIndex] = EdgeIntersectionPoints(upOrDown, 0, 1, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
                 tmpUpTangents, tmpDownTangents);
             newVectorIndex++;
         }
         if (intersections[1])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown2, 1, 2, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+            newVectors[newVectorIndex] = EdgeIntersectionPoints(upOrDown2, 1, 2, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
                  tmpUpTangents, tmpDownTangents);
             newVectorIndex++;
         }
         if (intersections[2])
         {
-            newVectors[newVectorIndex] = AddToCorrectSideList(upOrDown3, 2, 0, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+            newVectors[newVectorIndex] = EdgeIntersectionPoints(upOrDown3, 2, 0, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
                  tmpUpTangents, tmpDownTangents);
         }
 
         //only 2 new vectors in all cases
         centerEdges.Add(new Edge(newVectors[0], newVectors[1]));
 
-        HandleTriOrder(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents);
+        TriIntersectionType(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents);
 
         listPooler.PoolList(tmpUpVerts);
         listPooler.PoolList(tmpDownVerts);
@@ -522,44 +523,8 @@ public class CutMeshV6 : MonoBehaviour
         listPooler.PoolList(tmpDownTangents);
     }
 
-    void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
-        List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
-    {
-        AddTriToCorrectMeshObject(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownTangs.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs, downTangents);
-
-        if (tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            AddTriToCorrectMeshObject(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] },
-                new Vector3[] { tmpDownNormals[0], tmpDownNormals[2], tmpDownNormals[3] },
-                new Vector4[] { tmpDownTangs[0], tmpDownTangs[2], tmpDownTangs[3] },
-                new Vector2[] { tmpDownUvs[0], tmpDownUvs[2], tmpDownUvs[3] }, downVerts, downhashVerts, downNormals, downUVs, downTangents);
-
-        AddTriToCorrectMeshObject(tmpUpVerts.ToArray(), tmpUpNormals.ToArray(), tmpUpTangs.ToArray(), tmpUpUvs.ToArray(), upVerts, uphashVerts, upNormals, upUVs, upTangents);
-
-        if (tmpUpVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            AddTriToCorrectMeshObject(new Vector3[] { tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3] },
-                new Vector3[] { tmpUpNormals[0], tmpUpNormals[2], tmpUpNormals[3] },
-                new Vector4[] { tmpUpTangs[0], tmpUpTangs[2], tmpUpTangs[3] },
-                new Vector2[] { tmpUpUvs[0], tmpUpUvs[2], tmpUpUvs[3] }, upVerts, uphashVerts, upNormals, upUVs, upTangents);
-    }
-
-    void HandleBaryCentric(Vector3 newPoint, ref Vector2 newUV, ref Vector3 newNormal, ref Vector4 newTangent, Vector3[] points, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
-    {
-        Vector3 f1 = points[0] - newPoint;
-        Vector3 f2 = points[1] - newPoint;
-        Vector3 f3 = points[2] - newPoint;
-        // calculate the areas and factors (order of parameters doesn't matter):
-        float areaMainTri = Vector3.Cross(points[0] - points[1], points[0] - points[2]).magnitude; // main triangle area a
-        float a1 = Vector3.Cross(f2, f3).magnitude / areaMainTri; // p1's triangle area / a
-        float a2 = Vector3.Cross(f3, f1).magnitude / areaMainTri; // p2's triangle area / a 
-        float a3 = Vector3.Cross(f1, f2).magnitude / areaMainTri; // p3's triangle area / a
-        // find the uv corresponding to point f (uv1/uv2/uv3 are associated to p1/p2/p3):
-        newNormal = normals[0] * a1 + normals[1] * a2 + normals[2] * a3;
-        newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
-        newTangent = tangents[0] * a1 + tangents[1] * a2 + tangents[2] * a3;
-    }
-
-    Vector3 AddToCorrectSideList(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents,
-        List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs, List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
+    Vector3 EdgeIntersectionPoints(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents,
+    List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs, List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
     {
         Vector3 p1 = verts[pIndex1];
         Vector3 p2 = verts[pIndex2];
@@ -579,7 +544,7 @@ public class CutMeshV6 : MonoBehaviour
         Vector2 newUv = new Vector2(0, 0);
         Vector3 newNormal = new Vector3(0, 0, 0);
         Vector4 newTangent = new Vector4(0, 0, 0, 0);
-        HandleBaryCentric(newVert, ref newUv, ref newNormal, ref newTangent, verts, uvs, normals, tangents);
+        BarycentricInterpolation(newVert, ref newUv, ref newNormal, ref newTangent, verts, uvs, normals, tangents);
 
         //---------------------------------
         if (upOrDown > 0)
@@ -645,5 +610,40 @@ public class CutMeshV6 : MonoBehaviour
         }
     }
 
+    void TriIntersectionType(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
+        List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
+    {
+        AddTriToCorrectMeshObject(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownTangs.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs, downTangents);
+
+        if (tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
+            AddTriToCorrectMeshObject(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] },
+                new Vector3[] { tmpDownNormals[0], tmpDownNormals[2], tmpDownNormals[3] },
+                new Vector4[] { tmpDownTangs[0], tmpDownTangs[2], tmpDownTangs[3] },
+                new Vector2[] { tmpDownUvs[0], tmpDownUvs[2], tmpDownUvs[3] }, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+
+        AddTriToCorrectMeshObject(tmpUpVerts.ToArray(), tmpUpNormals.ToArray(), tmpUpTangs.ToArray(), tmpUpUvs.ToArray(), upVerts, uphashVerts, upNormals, upUVs, upTangents);
+
+        if (tmpUpVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
+            AddTriToCorrectMeshObject(new Vector3[] { tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3] },
+                new Vector3[] { tmpUpNormals[0], tmpUpNormals[2], tmpUpNormals[3] },
+                new Vector4[] { tmpUpTangs[0], tmpUpTangs[2], tmpUpTangs[3] },
+                new Vector2[] { tmpUpUvs[0], tmpUpUvs[2], tmpUpUvs[3] }, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+    }
+
+    void BarycentricInterpolation(Vector3 newPoint, ref Vector2 newUV, ref Vector3 newNormal, ref Vector4 newTangent, Vector3[] points, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
+    {
+        Vector3 f1 = points[0] - newPoint;
+        Vector3 f2 = points[1] - newPoint;
+        Vector3 f3 = points[2] - newPoint;
+        // calculate the areas and factors (order of parameters doesn't matter):
+        float areaMainTri = Vector3.Cross(points[0] - points[1], points[0] - points[2]).magnitude; // main triangle area a
+        float a1 = Vector3.Cross(f2, f3).magnitude / areaMainTri; // p1's triangle area / a
+        float a2 = Vector3.Cross(f3, f1).magnitude / areaMainTri; // p2's triangle area / a 
+        float a3 = Vector3.Cross(f1, f2).magnitude / areaMainTri; // p3's triangle area / a
+        // find the uv corresponding to point f (uv1/uv2/uv3 are associated to p1/p2/p3):
+        newNormal = normals[0] * a1 + normals[1] * a2 + normals[2] * a3;
+        newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
+        newTangent = tangents[0] * a1 + tangents[1] * a2 + tangents[2] * a3;
+    }
 
 }
