@@ -415,7 +415,7 @@ public class CutMeshV6 : MonoBehaviour
                         partUvs[i].Add(newUV);
 
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(1, 0, 0, -1));
+                        partTangents[i].Add(new Vector4(1, 0, 0, -1)); //isto provavelmente podia estar numa variavel separada, não há razão para criar uma tangent nova se são todas iguais, ou não, tenho de ver se são todas iguais ou não
                     }
 
                 }
