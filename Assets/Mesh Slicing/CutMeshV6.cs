@@ -1,11 +1,6 @@
-﻿using System.Collections;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Profiling;
 using System.Linq;
-using System.Linq.Expressions;
 
 public class CutMeshV6 : MonoBehaviour
 {
