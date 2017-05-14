@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using System.Collections.Generic;
 
 //This struct encapsulates both the body triangles and the cut-hull triangles
 public struct ProtoMesh {

@@ -1,11 +1,6 @@
-﻿using System.Collections;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Profiling;
 using System.Linq;
-using System.Linq.Expressions;
 
 public class CutMeshV6 : MonoBehaviour
 {
@@ -63,9 +58,9 @@ public class CutMeshV6 : MonoBehaviour
     void CutMesh()
     {
         //SETUP QUAD VARIABLES==================================================
-        planeNormal = transform.TransformVector(myMesh.normals[0]);
+        planeNormal = -transform.forward;
         planeNormal = planeNormal.normalized;
-        planePoint = transform.TransformPoint(myMesh.vertices[0]);
+        planePoint = transform.position;
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;

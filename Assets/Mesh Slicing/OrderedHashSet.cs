@@ -1,9 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using UnityEngine;
-using UnityEngine.Profiling;
-using System.Linq;
 
 
 //maintains insertion order, has the value as it's own key, which is important when comparing vector3's
