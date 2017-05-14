@@ -125,11 +125,11 @@ public class CutMeshV6 : MonoBehaviour
             {
                 if (Mathf.Sign(Vector3.Dot(planeNormal, (worldp1 - planePoint))) > 0)
                 {//above
-                    FindSeparateMeshes(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
                 }
                 else
                 {
-                    FindSeparateMeshes(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
                 }
             }
 
@@ -139,7 +139,7 @@ public class CutMeshV6 : MonoBehaviour
         {
             return;
         }
-        List<List<int>> groupedVerts = CenterVertsIntoParts();
+        List<List<int>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
         for (int i = 0; i < groupedVerts.Count; i++)
@@ -167,7 +167,7 @@ public class CutMeshV6 : MonoBehaviour
         list.RemoveAt(list.Count - 1);
     }
 
-    void FindSeparateMeshes(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+    void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
 
@@ -260,7 +260,7 @@ public class CutMeshV6 : MonoBehaviour
         }
     }
 
-    List<List<int>> CenterVertsIntoParts()
+    List<List<int>> GroupConnectedCenterVerts()
     {
         bool[] visited = new bool[centerEdges.Count];
 
@@ -525,18 +525,18 @@ public class CutMeshV6 : MonoBehaviour
     void HandleTriOrder(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
         List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
     {
-        FindSeparateMeshes(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownTangs.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs, downTangents);
+        AddTriToCorrectMeshObject(tmpDownVerts.ToArray(), tmpDownNormals.ToArray(), tmpDownTangs.ToArray(), tmpDownUvs.ToArray(), downVerts, downhashVerts, downNormals, downUVs, downTangents);
 
         if (tmpDownVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            FindSeparateMeshes(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] },
+            AddTriToCorrectMeshObject(new Vector3[] { tmpDownVerts[0], tmpDownVerts[2], tmpDownVerts[3] },
                 new Vector3[] { tmpDownNormals[0], tmpDownNormals[2], tmpDownNormals[3] },
                 new Vector4[] { tmpDownTangs[0], tmpDownTangs[2], tmpDownTangs[3] },
                 new Vector2[] { tmpDownUvs[0], tmpDownUvs[2], tmpDownUvs[3] }, downVerts, downhashVerts, downNormals, downUVs, downTangents);
 
-        FindSeparateMeshes(tmpUpVerts.ToArray(), tmpUpNormals.ToArray(), tmpUpTangs.ToArray(), tmpUpUvs.ToArray(), upVerts, uphashVerts, upNormals, upUVs, upTangents);
+        AddTriToCorrectMeshObject(tmpUpVerts.ToArray(), tmpUpNormals.ToArray(), tmpUpTangs.ToArray(), tmpUpUvs.ToArray(), upVerts, uphashVerts, upNormals, upUVs, upTangents);
 
         if (tmpUpVerts.Count > 3) //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
-            FindSeparateMeshes(new Vector3[] { tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3] },
+            AddTriToCorrectMeshObject(new Vector3[] { tmpUpVerts[0], tmpUpVerts[2], tmpUpVerts[3] },
                 new Vector3[] { tmpUpNormals[0], tmpUpNormals[2], tmpUpNormals[3] },
                 new Vector4[] { tmpUpTangs[0], tmpUpTangs[2], tmpUpTangs[3] },
                 new Vector2[] { tmpUpUvs[0], tmpUpUvs[2], tmpUpUvs[3] }, upVerts, uphashVerts, upNormals, upUVs, upTangents);
