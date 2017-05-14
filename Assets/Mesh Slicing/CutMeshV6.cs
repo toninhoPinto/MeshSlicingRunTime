@@ -409,7 +409,11 @@ public class CutMeshV6 : MonoBehaviour
                         normal = -planeNormal;
                     for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count; k++)
                     {
-                        partUvs[i].Add(new Vector2(0, 0));
+                        Vector2 newUV = transform.worldToLocalMatrix.MultiplyPoint(partVerts[i][k]);
+                        newUV.x += 0.5f;
+                        newUV.y += 0.5f;
+                        partUvs[i].Add(newUV);
+
                         partNormals[i].Add(normal);
                         partTangents[i].Add(new Vector4(0, 1, 0, -1));
                     }
