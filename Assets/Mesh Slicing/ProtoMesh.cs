@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+//This class encapsulates both the body triangles and the cut-hull triangles
 public class ProtoMesh {
 
     public List<int> BodyTris

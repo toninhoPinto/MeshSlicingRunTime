@@ -146,12 +146,16 @@ public class CutMeshV6 : MonoBehaviour
         {
             faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
         }
-        HandleBodyTris(upVerts, upTris);
-        HandleBodyTris(downVerts, downTris);
+
+        CreateBodyTris(upVerts, upTris);
+        CreateBodyTris(downVerts, downTris);
+
         HandleIntersectedZone(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
         HandleIntersectedZone(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
-        CreateParts(upVerts, upTris, upNormals, upTangents, upUVs);
-        CreateParts(downVerts, downTris, downNormals, downTangents, downUVs);
+
+        CreateFinalGameObjects(upVerts, upTris, upNormals, upTangents, upUVs);
+        CreateFinalGameObjects(downVerts, downTris, downNormals, downTangents, downUVs);
+
         Destroy(target);
     }
 
@@ -243,7 +247,7 @@ public class CutMeshV6 : MonoBehaviour
         listPooler.PoolList(indexFound);
     }
 
-    void HandleBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris)
+    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris)
     {
         for (int i = 0; i < partVerts.Count; i++)
         {
@@ -425,7 +429,7 @@ public class CutMeshV6 : MonoBehaviour
         }
     }
 
-    void CreateParts(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<List<Vector2>> partUvs)
+    void CreateFinalGameObjects(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<List<Vector2>> partUvs)
     {
 
         for (int i = 0; i < partVerts.Count; i++)
