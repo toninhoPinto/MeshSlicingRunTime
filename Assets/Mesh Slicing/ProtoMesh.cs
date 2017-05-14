@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-//This class encapsulates both the body triangles and the cut-hull triangles
-public class ProtoMesh {
+//This struct encapsulates both the body triangles and the cut-hull triangles
+public struct ProtoMesh {
 
     public List<int> BodyTris
     {
@@ -21,5 +21,4 @@ public class ProtoMesh {
         this.SubmeshTris = submeshTris;
     }
 
-    
 }

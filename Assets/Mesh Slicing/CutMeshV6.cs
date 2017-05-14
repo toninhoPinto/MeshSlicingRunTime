@@ -92,38 +92,38 @@ public class CutMeshV6 : MonoBehaviour
         downTangents = new List<List<Vector4>>();
 
         centerEdges = new List<Edge>();
+        bool[] intersected = new bool[3];
+        Vector3[] triVerts = new Vector3[3];
+        Vector2[] triUvs = new Vector2[3];
+        Vector3[] triNormals = new Vector3[3];
+        Vector4[] triTangents = new Vector4[3];
 
         for (int i = 0; i < tris.Length; i += 3)
         {
-            Vector3 worldp1 = target.transform.TransformPoint(verts[tris[i]]);
-            Vector3 worldp2 = target.transform.TransformPoint(verts[tris[i + 1]]);
-            Vector3 worldp3 = target.transform.TransformPoint(verts[tris[i + 2]]);
+            triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
+            triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
+            triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
 
-            Vector2 uv1 = uvs[tris[i]];
-            Vector2 uv2 = uvs[tris[i + 1]];
-            Vector2 uv3 = uvs[tris[i + 2]];
+            triUvs[0] = uvs[tris[i]];
+            triUvs[1] = uvs[tris[i + 1]];
+            triUvs[2] = uvs[tris[i + 2]];
 
-            Vector3 normal1 = normals[tris[i]];
-            Vector3 normal2 = normals[tris[i + 1]];
-            Vector3 normal3 = normals[tris[i + 2]];
+            triNormals[0] = normals[tris[i]];
+            triNormals[1] = normals[tris[i + 1]];
+            triNormals[2] = normals[tris[i + 2]];
 
-            Vector4 tangents1 = tangents[tris[i]];
-            Vector4 tangents2 = tangents[tris[i + 1]];
-            Vector4 tangents3 = tangents[tris[i + 2]];
+            triTangents[0] = tangents[tris[i]];
+            triTangents[1] = tangents[tris[i + 1]];
+            triTangents[2] = tangents[tris[i + 2]];
 
-            Vector2[] triUvs = { uv1, uv2, uv3 };
-            Vector3[] triVerts = { worldp1, worldp2, worldp3 };
-            Vector3[] triNormals = { normal1, normal2, normal3 };
-            Vector4[] triTangents = { tangents1, tangents2, tangents3 };
-
-            bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
+            DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
             if (intersected[0] || intersected[1] || intersected[2])
             {
                 TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
             }
             else
             {
-                if (Mathf.Sign(Vector3.Dot(planeNormal, (worldp1 - planePoint))) > 0)
+                if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
                 {//above
                     AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
                 }
@@ -458,18 +458,22 @@ public class CutMeshV6 : MonoBehaviour
             newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
             newPart.GetComponent<Renderer>().materials[1] = target.GetComponent<Renderer>().material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
+
+            //return protoMesh lists to the pool (need to think if the structs themselves could be pooled aswell somehow)
+            listPooler.PoolList(partTris[i].BodyTris);
+            listPooler.PoolList(partTris[i].SubmeshTris);
         }
     }
 
-    bool[] DoesTriIntersectPlane(Vector3 p1, Vector3 p2, Vector3 p3)
+    void DoesTriIntersectPlane(Vector3 p1, Vector3 p2, Vector3 p3, bool[] intersections)
     {
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, p1 - planePoint));
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, p2 - planePoint));
         float upOrDown3 = Mathf.Sign(Vector3.Dot(planeNormal, p3 - planePoint));
 
-        bool[] intersections = { upOrDown != upOrDown2, upOrDown2 != upOrDown3, upOrDown != upOrDown3 };
-
-        return intersections;
+        intersections[0] = upOrDown != upOrDown2;
+        intersections[1] = upOrDown2 != upOrDown3;
+        intersections[2] = upOrDown != upOrDown3 ;
     }
 
     void TriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
