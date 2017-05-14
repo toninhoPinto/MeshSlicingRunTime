@@ -491,7 +491,7 @@ public class CutMeshV6 : MonoBehaviour
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, verts[1] - planePoint));
         float upOrDown3 = Mathf.Sign(Vector3.Dot(planeNormal, verts[2] - planePoint));
 
-        Vector3[] newVectors = new Vector3[2];
+        Vector3[] newVectors = new Vector3[2]; //this could probably be just instantiated once and reused
         int newVectorIndex = 0;
 
         if (intersections[0])
