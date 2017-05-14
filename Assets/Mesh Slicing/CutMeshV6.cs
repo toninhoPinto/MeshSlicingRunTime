@@ -415,7 +415,7 @@ public class CutMeshV6 : MonoBehaviour
                         partUvs[i].Add(newUV);
 
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(0, 1, 0, -1));
+                        partTangents[i].Add(new Vector4(1, 0, 0, -1));
                     }
 
                 }
