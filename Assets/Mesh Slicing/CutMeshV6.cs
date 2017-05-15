@@ -10,6 +10,7 @@ public class CutMeshV6 : MonoBehaviour
     Vector3 planeNormal;
     Vector3 planePoint;
     Mesh myMesh;
+    Renderer targetRenderer;
 
     List<List<Vector3>> upVerts;
     List<OrderedHashSet<Vector3>> uphashVerts;
@@ -64,6 +65,7 @@ public class CutMeshV6 : MonoBehaviour
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
+        targetRenderer = target.GetComponent<Renderer>();
 
         int[] tris = targetMesh.triangles;
         Vector2[] uvs = targetMesh.uv;
@@ -450,8 +452,7 @@ public class CutMeshV6 : MonoBehaviour
             newPartMesh.SetTangents(partTangents[i]);
             newPartMesh.SetUVs(0, partUvs[i]);
             newPartMesh.RecalculateBounds();
-            newPart.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
-            newPart.GetComponent<Renderer>().materials[1] = target.GetComponent<Renderer>().material;
+            newPart.GetComponent<Renderer>().material = targetRenderer.material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
 
             //return protoMesh lists to the pool (need to think if the structs themselves could be pooled aswell somehow)
