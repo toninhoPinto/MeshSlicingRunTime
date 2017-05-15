@@ -2,7 +2,6 @@
 {
 	Properties
 	{
-		_MainTex ("Texture", 2D) = "white" {}
 		_BumpMap("Normal Map", 2D) = "bump" {}
 
 		_Color("Color", Color) = (1,0,0,1)
@@ -44,9 +43,8 @@
 				half3 tspace2 : TEXCOORD3; // tangent.z, bitangent.z, normal.z
 			};
 
-			sampler2D _MainTex;
 			sampler2D _BumpMap;
-			float4 _MainTex_ST;
+			float4 _BumpMap_ST;
 			float4 _Color;
 			float4 _DarkColor;
 			float _CutOff;
@@ -55,7 +53,7 @@
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
+				o.uv = TRANSFORM_TEX(v.uv, _BumpMap);
 
 				half3 wNormal = UnityObjectToWorldNormal(v.normals);
 				half3 wTangent = UnityObjectToWorldDir(v.tangent.xyz);
@@ -73,9 +71,6 @@
 			
 			fixed4 frag (v2f i) : SV_Target
 			{
-				// sample the texture
-				fixed4 col = tex2D(_MainTex, i.uv);	
-
 				half3 tnormal = UnpackNormal(tex2D(_BumpMap, i.uv));
 				// transform normal from tangent to world space
 				half3 worldNormal;
