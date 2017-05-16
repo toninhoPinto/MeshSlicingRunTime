@@ -15,8 +15,8 @@ public struct ProtoMesh {
 
     public ProtoMesh(List<int> bodyTris, List<int> submeshTris)
     {
-        this.BodyTris = bodyTris;
-        this.SubmeshTris = submeshTris;
+        BodyTris = bodyTris;
+        SubmeshTris = submeshTris;
     }
 
 }
