@@ -5,26 +5,6 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using System.Linq;
 
-
-public class IntersectionLoop
-{
-    public List<Vector3> verts;
-    public Vector3 center;
-
-    public IntersectionLoop(List<int> index, List<Edge> edges)
-    {
-        verts = new List<Vector3>();
-        for (int k = 0; k < index.Count; k++)
-        {
-            verts.Add(edges[index[k]].start);
-            verts.Add(edges[index[k]].end);
-            center += edges[index[k]].start;
-            center += edges[index[k]].end;
-        }
-        center /= index.Count * 2;
-    }
-}
-
 public class CutMeshV5 : MonoBehaviour
 {
 
