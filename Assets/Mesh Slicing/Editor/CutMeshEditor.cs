@@ -61,3 +61,18 @@ public class ObjectBuilderEditor7 : Editor
         }
     }
 }
+
+[CustomEditor(typeof(CutMeshV8))]
+public class ObjectBuilderEditor8 : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        DrawDefaultInspector();
+
+        CutMeshV8 myScript = (CutMeshV8)target;
+        if (GUILayout.Button("Cut Object"))
+        {
+            myScript.Cut();
+        }
+    }
+}
