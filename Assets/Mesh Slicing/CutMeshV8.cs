@@ -102,8 +102,8 @@ public class CutMeshV8 : MonoBehaviour
 
         float submeshCount = targetMesh.subMeshCount;
 
-        int bigMeshVertsSizeUp = 0;
-        int bigMeshVertsSizeDown = 0;
+        List<int> bigMeshVertsSizeUp = listPooler.GetPooledList();
+        List<int> bigMeshVertsSizeDown = listPooler.GetPooledList();
 
         for (int j = 0; j < submeshCount; j++)
         {
@@ -145,16 +145,24 @@ public class CutMeshV8 : MonoBehaviour
                 }
 
             }
-            if (j == 0)
+
+            if (j == 0 )
             {
-                bigMeshVertsSizeUp = upVerts[0].Count;
-                bigMeshVertsSizeDown = downVerts[0].Count;
+                for (int k = 0; k < upVerts.Count; k++)
+                {
+                    bigMeshVertsSizeUp.Add(upVerts[k].Count);
+                }
+
+                for (int k = 0; k < downVerts.Count; k++)
+                {
+                    bigMeshVertsSizeDown.Add(downVerts[k].Count);
+                }
             }
                 
             listPooler.PoolList(tris);
         }
 
-        if (centerEdges.Count == 0)
+        if (centerEdges.Count == 0 || upVerts.Count == 0 || downVerts.Count == 0)
         {
             return;
         }
@@ -190,6 +198,11 @@ public class CutMeshV8 : MonoBehaviour
     void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
+        if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
+            Debug.Log("how the fuck");
+
+        if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
+            Debug.Log("how the fuck2");
 
         List<int> indexFound = listPooler.GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
@@ -262,7 +275,7 @@ public class CutMeshV8 : MonoBehaviour
         listPooler.PoolList(indexFound);
     }
 
-    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, int limit)
+    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<int> limit)
     {
         for (int i = 0; i < partVerts.Count; i++)
         {
@@ -271,13 +284,14 @@ public class CutMeshV8 : MonoBehaviour
 
             for (int k = 0; k < partVerts[i].Count; k++)
             {
-                if (i >0 || (i==0 && k < limit))
+                if (k < limit[i])
                     newListBodyTris.Add(k);
                 else
                     newListSubMeshTris.Add(k);
             }
             partTris.Add(new ProtoMesh(newListBodyTris, newListSubMeshTris));
         }
+        listPooler.PoolList(limit);
     }
 
     List<List<Vector3>> GroupConnectedCenterVerts()
