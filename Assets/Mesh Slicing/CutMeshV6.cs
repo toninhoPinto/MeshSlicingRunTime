@@ -9,6 +9,7 @@ public class CutMeshV6 : MonoBehaviour
     public GameObject prefabPart;
     Vector3 planeNormal;
     Vector3 planePoint;
+    Vector4 planeTangent;
     Mesh myMesh;
     Renderer targetRenderer;
 
@@ -69,6 +70,7 @@ public class CutMeshV6 : MonoBehaviour
         planeNormal = -transform.forward;
         planeNormal = planeNormal.normalized;
         planePoint = transform.position;
+        planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
@@ -143,12 +145,12 @@ public class CutMeshV6 : MonoBehaviour
         CreateBodyTris(upVerts, upTris);
         CreateBodyTris(downVerts, downTris);
 
-        List<List<int>> groupedVerts = GroupConnectedCenterVerts();
+        List<List<Vector3>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
         for (int i = 0; i < groupedVerts.Count; i++)
         {
-            faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
+            faceLoops.Add(new IntersectionLoop(groupedVerts[i]));
         }
 
         CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
@@ -183,11 +185,6 @@ public class CutMeshV6 : MonoBehaviour
 
         if (indexFound.Count == 0)
         {
-            if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
-                Debug.Log("how the fuck");
-
-            if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
-                Debug.Log("how the fuck2");
             vertParts.Add(listPooler.GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
             vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]));
             normalParts.Add(listPooler.GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
@@ -261,7 +258,7 @@ public class CutMeshV6 : MonoBehaviour
         }
     }
 
-    List<List<int>> GroupConnectedCenterVerts()
+    List<List<Vector3>> GroupConnectedCenterVerts()
     {
         bool[] visited = new bool[centerEdges.Count];
 
@@ -272,17 +269,20 @@ public class CutMeshV6 : MonoBehaviour
         Vector3 end = centerEdges[nextEdge].end;
         visited[nextEdge] = true;
 
-        List<List<int>> groupedEdgesConnected = new List<List<int>>();
-        List<int> tmpEdgesConnected = new List<int>();
-        tmpEdgesConnected.Add(nextEdge);
+        List<List<Vector3>> groupedEdgesConnected = new List<List<Vector3>>();
+        List<Vector3> tmpEdgesConnected = listPooler.GetPooledListVector3();
+        tmpEdgesConnected.Add(start);
+        tmpEdgesConnected.Add(end);
+
         bool finished = false;
         while (!finished)
         {
             for (int i = 0; i < centerEdges.Count; i++)
             {
 
-                if (EdgeA.Equals(EdgeB) && tmpEdgesConnected.Count > 1)// did a loop
+                if ((EdgeA == EdgeB || start == end) && tmpEdgesConnected.Count > 2)// did a loop
                 {
+                    tmpEdgesConnected.RemoveAt(tmpEdgesConnected.Count - 1);
                     groupedEdgesConnected.Add(tmpEdgesConnected);
                     finished = true;
                     for (int j = 0; j < visited.Length; j++)
@@ -308,9 +308,9 @@ public class CutMeshV6 : MonoBehaviour
                     start = centerEdges[nextEdge].start;
                     EdgeB = nextEdge;
                     end = centerEdges[nextEdge].end;
-                    tmpEdgesConnected = new List<int>();
+                    tmpEdgesConnected = listPooler.GetPooledListVector3();
                     visited[nextEdge] = true;
-                    tmpEdgesConnected.Add(nextEdge);
+                    tmpEdgesConnected.Add(start);
                 }
 
                 if (visited[i])
@@ -318,25 +318,28 @@ public class CutMeshV6 : MonoBehaviour
 
                 if (start == centerEdges[i].start || start == centerEdges[i].end)
                 {
-                    tmpEdgesConnected.Add(i);
-                    EdgeA = i;
-                    visited[EdgeA] = true;
                     if (start == centerEdges[i].start)
                         start = centerEdges[i].end;
                     else
                         start = centerEdges[i].start;
+
+                    if (!visited[i])
+                        tmpEdgesConnected.Add(start);
+                    EdgeA = i;
+                    visited[EdgeA] = true;
                 }
 
                 if (end == centerEdges[i].start || end == centerEdges[i].end)
                 {
-                    if (!visited[i])
-                        tmpEdgesConnected.Add(i);
-                    EdgeB = i;
-                    visited[EdgeB] = true;
                     if (end == centerEdges[i].start)
                         end = centerEdges[i].end;
                     else
                         end = centerEdges[i].start;
+
+                    if (!visited[i])
+                        tmpEdgesConnected.Add(end);
+                    EdgeB = i;
+                    visited[EdgeB] = true;
                 }
 
 
@@ -351,12 +354,12 @@ public class CutMeshV6 : MonoBehaviour
     void CreateHullMeshFromEdgeLoop(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<ProtoMesh> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
     {
-
+        List<Vector3> centerVerts;
         for (int i = 0; i < vertPartsHashed.Count; i++)
         {
             for (int j = 0; j < centerGroups.Count; j++)
             {
-                List<Vector3> centerVerts = centerGroups[j].verts;
+                centerVerts = centerGroups[j].verts;
                 if (vertPartsHashed[i].Contains(centerVerts[0]))
                 {
                     List<int> centerTris = listPooler.GetPooledList();
@@ -379,7 +382,7 @@ public class CutMeshV6 : MonoBehaviour
 
                     if (top)
                     {
-                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 2; k++)
                         {
                             centerTris.Add(k);
                             centerTris.Add(k + 1);
@@ -392,7 +395,7 @@ public class CutMeshV6 : MonoBehaviour
                     }
                     else
                     {
-                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 2; k++)
                         {
                             centerTris.Add(k);
                             centerTris.Add(partVerts[i].Count - 1);
@@ -403,6 +406,7 @@ public class CutMeshV6 : MonoBehaviour
                         centerTris.Add(partVerts[i].Count - 1);
                         centerTris.Add(sizeVertsBeforeCenter);
                     }
+
                     partTris[i].SubmeshTris.AddRange(centerTris);
                     listPooler.PoolList(centerTris);
 
@@ -420,7 +424,7 @@ public class CutMeshV6 : MonoBehaviour
                         partUvs[i].Add(newUV);
 
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(1, 0, 0, -1)); //isto provavelmente podia estar numa variavel separada, não há razão para criar uma tangent nova se são todas iguais, ou não, tenho de ver se são todas iguais ou não
+                        partTangents[i].Add(planeTangent);
                     }
 
                 }

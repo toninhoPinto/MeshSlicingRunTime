@@ -9,6 +9,7 @@ public class CutMeshV8 : MonoBehaviour
     public GameObject prefabPart;
     Vector3 planeNormal;
     Vector3 planePoint;
+    Vector4 planeTangent;
     Mesh myMesh;
     Renderer targetRenderer;
 
@@ -69,12 +70,13 @@ public class CutMeshV8 : MonoBehaviour
         planeNormal = -transform.forward;
         planeNormal = planeNormal.normalized;
         planePoint = transform.position;
+        planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
         targetRenderer = target.GetComponent<Renderer>();
 
-        int[] tris = targetMesh.triangles;
+        List<int> tris;
         Vector2[] uvs = targetMesh.uv;
         Vector3[] verts = targetMesh.vertices;
         Vector3[] normals = targetMesh.normals;
@@ -98,42 +100,58 @@ public class CutMeshV8 : MonoBehaviour
         centerEdges = new List<Edge>();
         bool[] intersected = new bool[3];
 
-        for (int i = 0; i < tris.Length; i += 3)
+        float submeshCount = targetMesh.subMeshCount;
+
+        int bigMeshVertsSizeUp = 0;
+        int bigMeshVertsSizeDown = 0;
+
+        for (int j = 0; j < submeshCount; j++)
         {
-            triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
-            triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
-            triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
-
-            triUvs[0] = uvs[tris[i]];
-            triUvs[1] = uvs[tris[i + 1]];
-            triUvs[2] = uvs[tris[i + 2]];
-
-            triNormals[0] = normals[tris[i]];
-            triNormals[1] = normals[tris[i + 1]];
-            triNormals[2] = normals[tris[i + 2]];
-
-            triTangents[0] = tangents[tris[i]];
-            triTangents[1] = tangents[tris[i + 1]];
-            triTangents[2] = tangents[tris[i + 2]];
-
-            DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
-            if (intersected[0] || intersected[1] || intersected[2])
+            tris = listPooler.GetPooledList();
+            targetMesh.GetTriangles(tris, j);
+            for (int i = 0; i < tris.Count; i += 3)
             {
-                //Debug.Log(triVerts[0].ToString("F6") + ";" + triVerts[1].ToString("F6") + ";" + triVerts[2].ToString("F6"));
-                TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
-            }
-            else
-            {
-                if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
-                {//above
-                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
+                triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
+                triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
+
+                triUvs[0] = uvs[tris[i]];
+                triUvs[1] = uvs[tris[i + 1]];
+                triUvs[2] = uvs[tris[i + 2]];
+
+                triNormals[0] = normals[tris[i]];
+                triNormals[1] = normals[tris[i + 1]];
+                triNormals[2] = normals[tris[i + 2]];
+
+                triTangents[0] = tangents[tris[i]];
+                triTangents[1] = tangents[tris[i + 1]];
+                triTangents[2] = tangents[tris[i + 2]];
+
+                DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
+                if (intersected[0] || intersected[1] || intersected[2])
+                {
+                    TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
                 }
                 else
                 {
-                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
+                    {//above
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                    }
+                    else
+                    {
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                    }
                 }
-            }
 
+            }
+            if (j == 0)
+            {
+                bigMeshVertsSizeUp = upVerts[0].Count;
+                bigMeshVertsSizeDown = downVerts[0].Count;
+            }
+                
+            listPooler.PoolList(tris);
         }
 
         if (centerEdges.Count == 0)
@@ -141,8 +159,8 @@ public class CutMeshV8 : MonoBehaviour
             return;
         }
 
-        CreateBodyTris(upVerts, upTris);
-        CreateBodyTris(downVerts, downTris);
+        CreateBodyTris(upVerts, upTris, bigMeshVertsSizeUp);
+        CreateBodyTris(downVerts, downTris, bigMeshVertsSizeDown);
 
         List<List<Vector3>> groupedVerts = GroupConnectedCenterVerts();
 
@@ -184,13 +202,6 @@ public class CutMeshV8 : MonoBehaviour
 
         if (indexFound.Count == 0)
         {
-            /*
-            if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
-                Debug.Log("how the fuck");
-
-            if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
-                Debug.Log("how the fuck2");
-                */
             vertParts.Add(listPooler.GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
             vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]));
             normalParts.Add(listPooler.GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
@@ -251,16 +262,21 @@ public class CutMeshV8 : MonoBehaviour
         listPooler.PoolList(indexFound);
     }
 
-    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris)
+    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, int limit)
     {
         for (int i = 0; i < partVerts.Count; i++)
         {
-            List<int> newListTris = listPooler.GetPooledList();
+            List<int> newListBodyTris = listPooler.GetPooledList();
+            List<int> newListSubMeshTris = listPooler.GetPooledList();
+
             for (int k = 0; k < partVerts[i].Count; k++)
             {
-                newListTris.Add(k);
+                if (i >0 || (i==0 && k < limit))
+                    newListBodyTris.Add(k);
+                else
+                    newListSubMeshTris.Add(k);
             }
-            partTris.Add(new ProtoMesh(newListTris, listPooler.GetPooledList()));
+            partTris.Add(new ProtoMesh(newListBodyTris, newListSubMeshTris));
         }
     }
 
@@ -430,7 +446,7 @@ public class CutMeshV8 : MonoBehaviour
                         partUvs[i].Add(newUV);
 
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(1, 0, 0, -1)); //isto provavelmente podia estar numa variavel separada, não há razão para criar uma tangent nova se são todas iguais, ou não, tenho de ver se são todas iguais ou não
+                        partTangents[i].Add(planeTangent);
                     }
 
                 }
