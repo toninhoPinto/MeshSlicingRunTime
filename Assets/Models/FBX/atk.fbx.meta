@@ -1,0 +1,133 @@
+fileFormatVersion: 2
+guid: 0e2f5ff7d3a3c7f45906e96788960c8a
+timeCreated: 1495399513
+licenseType: Free
+ModelImporter:
+  serializedVersion: 19
+  fileIDToRecycleName:
+    100000: atk
+    100002: //RootNode
+    100004: Bone02
+    100006: Bone03
+    100008: Bone04
+    100010: Bone06
+    100012: Bone07
+    100014: Bone07_mirrored_
+    100016: Bone08_mirrored__mirrored_
+    100018: Bone08_mirrored__mirrored_01
+    100020: Bone10
+    100022: Bone11
+    100024: Bone13
+    100026: Bone14
+    100028: Bone15
+    100030: Bone16
+    100032: Bone17
+    100034: Dummy01
+    100036: Dummy02
+    100038: Dummy03
+    100040: Dummy04
+    100042: Dummy05
+    100044: Dummy06
+    100046: Dummy07
+    100048: Dummy08
+    100050: Skin
+    100052: TB_Bug_Mesh
+    400000: //RootNode
+    400002: atk
+    400004: Bone02
+    400006: Bone03
+    400008: Bone04
+    400010: Bone06
+    400012: Bone07
+    400014: Bone07_mirrored_
+    400016: Bone08_mirrored__mirrored_
+    400018: Bone08_mirrored__mirrored_01
+    400020: Bone10
+    400022: Bone11
+    400024: Bone13
+    400026: Bone14
+    400028: Bone15
+    400030: Bone16
+    400032: Bone17
+    400034: Dummy01
+    400036: Dummy02
+    400038: Dummy03
+    400040: Dummy04
+    400042: Dummy05
+    400044: Dummy06
+    400046: Dummy07
+    400048: Dummy08
+    400050: Skin
+    400052: TB_Bug_Mesh
+    4300000: TB_Bug_Mesh
+    7400000: C4D Animation Take
+    9500000: //RootNode
+    13700000: TB_Bug_Mesh
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations: []
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

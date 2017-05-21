@@ -539,12 +539,24 @@ public class CutMeshV9 : MonoBehaviour
                 partNormals[i][k] = partNormals[i][k];
             }
 
+            Debug.Log(partTris[i].SubmeshTris.Count);
+
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
-            newPartMesh.subMeshCount = 2;
-            newPartMesh.SetVertices(partVerts[i]);
-            newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
-            newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
+
+            if (partTris[i].SubmeshTris.Count > 0)
+            {
+                newPartMesh.subMeshCount = 2;
+                newPartMesh.SetVertices(partVerts[i]);
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+                newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
+            }else
+            {
+                newPartMesh.subMeshCount = 1;
+                newPartMesh.SetVertices(partVerts[i]);
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+            }
+
             newPartMesh.SetNormals(partNormals[i]);
             newPartMesh.SetTangents(partTangents[i]);
             newPartMesh.SetUVs(0, partUvs[i]);

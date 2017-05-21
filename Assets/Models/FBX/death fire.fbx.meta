@@ -1,0 +1,215 @@
+fileFormatVersion: 2
+guid: 9916ed2ddc11bb342ab8f11258eabbb2
+timeCreated: 1495399514
+licenseType: Free
+ModelImporter:
+  serializedVersion: 19
+  fileIDToRecycleName:
+    100000: Bone02
+    100002: Bone03
+    100004: Bone04
+    100006: Bone06
+    100008: Bone07
+    100010: Bone07_mirrored_
+    100012: Bone08_mirrored__mirrored_
+    100014: Bone08_mirrored__mirrored_01
+    100016: Bone10
+    100018: Bone11
+    100020: Bone13
+    100022: Bone14
+    100024: Bone15
+    100026: Bone16
+    100028: Bone17
+    100030: //RootNode
+    100032: death_fire
+    100034: Dummy01
+    100036: Dummy02
+    100038: Dummy03
+    100040: Dummy04
+    100042: Dummy05
+    100044: Dummy06
+    100046: Dummy07
+    100048: Dummy08
+    100050: Skin
+    100052: TB_Bug_Mesh
+    400000: Bone02
+    400002: Bone03
+    400004: Bone04
+    400006: Bone06
+    400008: Bone07
+    400010: Bone07_mirrored_
+    400012: Bone08_mirrored__mirrored_
+    400014: Bone08_mirrored__mirrored_01
+    400016: Bone10
+    400018: Bone11
+    400020: Bone13
+    400022: Bone14
+    400024: Bone15
+    400026: Bone16
+    400028: Bone17
+    400030: //RootNode
+    400032: death_fire
+    400034: Dummy01
+    400036: Dummy02
+    400038: Dummy03
+    400040: Dummy04
+    400042: Dummy05
+    400044: Dummy06
+    400046: Dummy07
+    400048: Dummy08
+    400050: Skin
+    400052: TB_Bug_Mesh
+    4300000: TB_Bug_Mesh
+    7400000: C4D Animation Take
+    9500000: //RootNode
+    13700000: TB_Bug_Mesh
+  materials:
+    importMaterials: 1
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    resampleCurves: 1
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationImportErrors: 
+    animationImportWarnings: 
+    animationRetargetingWarnings: 
+    animationDoRetargetingWarnings: 0
+    animationCompression: 1
+    animationRotationError: 0.5
+    animationPositionError: 0.5
+    animationScaleError: 0.5
+    animationWrapMode: 0
+    extraExposedTransformPaths: []
+    clipAnimations:
+    - serializedVersion: 16
+      name: C4D Animation Take
+      takeName: C4D Animation Take
+      firstFrame: 0
+      lastFrame: 160
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: death_fire
+        weight: 1
+      - path: death_fire/Bone02
+        weight: 1
+      - path: death_fire/Bone02/Dummy02
+        weight: 1
+      - path: death_fire/Bone03
+        weight: 1
+      - path: death_fire/Bone03/Bone07
+        weight: 1
+      - path: death_fire/Bone03/Bone07_mirrored_
+        weight: 1
+      - path: death_fire/Bone04
+        weight: 1
+      - path: death_fire/Bone04/Dummy01
+        weight: 1
+      - path: death_fire/Bone06
+        weight: 1
+      - path: death_fire/Bone06/Dummy03
+        weight: 1
+      - path: death_fire/Bone08_mirrored__mirrored_
+        weight: 1
+      - path: death_fire/Bone08_mirrored__mirrored_/Dummy04
+        weight: 1
+      - path: death_fire/Bone08_mirrored__mirrored_01
+        weight: 1
+      - path: death_fire/Bone08_mirrored__mirrored_01/Dummy08
+        weight: 1
+      - path: death_fire/Bone10
+        weight: 1
+      - path: death_fire/Bone10/Bone11
+        weight: 1
+      - path: death_fire/Bone13
+        weight: 1
+      - path: death_fire/Bone13/Bone14
+        weight: 1
+      - path: death_fire/Bone15
+        weight: 1
+      - path: death_fire/Bone15/Dummy05
+        weight: 1
+      - path: death_fire/Bone16
+        weight: 1
+      - path: death_fire/Bone16/Dummy06
+        weight: 1
+      - path: death_fire/Bone17
+        weight: 1
+      - path: death_fire/Bone17/Dummy07
+        weight: 1
+      - path: TB_Bug_Mesh
+        weight: 1
+      - path: TB_Bug_Mesh/Skin
+        weight: 1
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    isReadable: 1
+  meshes:
+    lODScreenPercentages: []
+    globalScale: 1
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 1
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 1
+  tangentSpace:
+    normalSmoothAngle: 60
+    normalImportMode: 0
+    tangentImportMode: 3
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    serializedVersion: 2
+    human: []
+    skeleton: []
+    armTwist: 0.5
+    foreArmTwist: 0.5
+    upperLegTwist: 0.5
+    legTwist: 0.5
+    armStretch: 0.05
+    legStretch: 0.05
+    feetSpacing: 0
+    rootMotionBoneName: 
+    rootMotionBoneRotation: {x: 0, y: 0, z: 0, w: 1}
+    hasTranslationDoF: 0
+    hasExtraRoot: 0
+    skeletonHasParents: 1
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 2
+  humanoidOversampling: 1
+  additionalBone: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
