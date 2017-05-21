@@ -62,6 +62,7 @@ public class CutMeshV9 : MonoBehaviour
         {
             Cut();
         }
+
     }
 
     void CutMesh()
@@ -147,8 +148,8 @@ public class CutMeshV9 : MonoBehaviour
                 //tris[i]
                 triVerts[0] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex]);
                 triUvs[0] = uvs[vertexIndex];
-                triNormals[0] = vertexBoneMatrix.MultiplyVector(normals[vertexIndex]);
-                triTangents[0] = vertexBoneMatrix.MultiplyVector(tangents[vertexIndex]);
+                triNormals[0] = normals[vertexIndex];
+                triTangents[0] = tangents[vertexIndex];
 
                 bm0 = boneMatrices[boneWeights[vertexIndex1].boneIndex0];
                 bm1 = boneMatrices[boneWeights[vertexIndex1].boneIndex1];
@@ -162,8 +163,8 @@ public class CutMeshV9 : MonoBehaviour
 
                 triVerts[1] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex1]);
                 triUvs[1] = uvs[vertexIndex1];
-                triNormals[1] = vertexBoneMatrix.MultiplyVector(normals[vertexIndex1]);
-                triTangents[1] = vertexBoneMatrix.MultiplyVector(tangents[vertexIndex1]);
+                triNormals[1] = normals[vertexIndex1];
+                triTangents[1] = tangents[vertexIndex1];
 
                 bm0 = boneMatrices[boneWeights[vertexIndex2].boneIndex0];
                 bm1 = boneMatrices[boneWeights[vertexIndex2].boneIndex1];
@@ -177,8 +178,8 @@ public class CutMeshV9 : MonoBehaviour
 
                 triVerts[2] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex2]);
                 triUvs[2] = uvs[vertexIndex2];
-                triNormals[2] = vertexBoneMatrix.MultiplyVector(normals[vertexIndex2]);
-                triTangents[2] = vertexBoneMatrix.MultiplyVector(tangents[vertexIndex2]);
+                triNormals[2] = normals[vertexIndex2];
+                triTangents[2] = tangents[vertexIndex2];
 
                 DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
                 if (intersected[0] || intersected[1] || intersected[2])

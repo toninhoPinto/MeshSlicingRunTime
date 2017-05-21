@@ -83,7 +83,89 @@ ModelImporter:
     animationScaleError: 0.5
     animationWrapMode: 0
     extraExposedTransformPaths: []
-    clipAnimations: []
+    clipAnimations:
+    - serializedVersion: 16
+      name: C4D Animation Take
+      takeName: C4D Animation Take
+      firstFrame: 0
+      lastFrame: 79
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask:
+      - path: 
+        weight: 1
+      - path: run
+        weight: 1
+      - path: run/Bone02
+        weight: 1
+      - path: run/Bone02/Dummy02
+        weight: 1
+      - path: run/Bone03
+        weight: 1
+      - path: run/Bone03/Bone07
+        weight: 1
+      - path: run/Bone03/Bone07_mirrored_
+        weight: 1
+      - path: run/Bone04
+        weight: 1
+      - path: run/Bone04/Dummy01
+        weight: 1
+      - path: run/Bone06
+        weight: 1
+      - path: run/Bone06/Dummy03
+        weight: 1
+      - path: run/Bone08_mirrored__mirrored_
+        weight: 1
+      - path: run/Bone08_mirrored__mirrored_/Dummy04
+        weight: 1
+      - path: run/Bone08_mirrored__mirrored_01
+        weight: 1
+      - path: run/Bone08_mirrored__mirrored_01/Dummy08
+        weight: 1
+      - path: run/Bone10
+        weight: 1
+      - path: run/Bone10/Bone11
+        weight: 1
+      - path: run/Bone13
+        weight: 1
+      - path: run/Bone13/Bone14
+        weight: 1
+      - path: run/Bone15
+        weight: 1
+      - path: run/Bone15/Dummy05
+        weight: 1
+      - path: run/Bone16
+        weight: 1
+      - path: run/Bone16/Dummy06
+        weight: 1
+      - path: run/Bone17
+        weight: 1
+      - path: run/Bone17/Dummy07
+        weight: 1
+      - path: TB_Bug_Mesh
+        weight: 1
+      - path: TB_Bug_Mesh/Skin
+        weight: 1
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
     isReadable: 1
   meshes:
     lODScreenPercentages: []
