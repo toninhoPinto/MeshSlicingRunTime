@@ -2,7 +2,7 @@
 using UnityEngine;
 using System.Linq;
 
-public class CutMeshV9 : MonoBehaviour
+public class CutMultiplePartsConcave : MonoBehaviour
 {
 
     public GameObject target;
@@ -62,7 +62,6 @@ public class CutMeshV9 : MonoBehaviour
         {
             Cut();
         }
-
     }
 
     void CutMesh()
@@ -74,7 +73,7 @@ public class CutMeshV9 : MonoBehaviour
         planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
         //==================================================
 
-        Mesh targetMesh = target.GetComponent<SkinnedMeshRenderer>().sharedMesh;
+        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
         targetRenderer = target.GetComponent<Renderer>();
 
         List<int> tris;
@@ -82,19 +81,6 @@ public class CutMeshV9 : MonoBehaviour
         Vector3[] verts = targetMesh.vertices;
         Vector3[] normals = targetMesh.normals;
         Vector4[] tangents = targetMesh.tangents;
-
-        Transform[] bones = target.GetComponent<SkinnedMeshRenderer>().bones;
-        List<Matrix4x4> bindPoses = new List<Matrix4x4>();
-        targetMesh.GetBindposes(bindPoses);
-
-        Matrix4x4[] boneMatrices = new Matrix4x4[bones.Length];
-        for (int i = 0; i < bones.Length; i++)
-        {
-            boneMatrices[i] = bones[i].localToWorldMatrix * bindPoses[i];
-        }
-
-        List<BoneWeight> boneWeights = new List<BoneWeight>();
-        targetMesh.GetBoneWeights(boneWeights);
 
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet<Vector3>>();
@@ -119,67 +105,27 @@ public class CutMeshV9 : MonoBehaviour
         List<int> bigMeshVertsSizeUp = listPooler.GetPooledList();
         List<int> bigMeshVertsSizeDown = listPooler.GetPooledList();
 
-        Matrix4x4 vertexBoneMatrix = new Matrix4x4();
-
         for (int j = 0; j < submeshCount; j++)
         {
             tris = listPooler.GetPooledList();
             targetMesh.GetTriangles(tris, j);
             for (int i = 0; i < tris.Count; i += 3)
             {
-                //triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
-                //triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
-                //triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
+                triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
+                triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
+                triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
 
-                int vertexIndex = tris[i];
-                int vertexIndex1 = tris[i+1];
-                int vertexIndex2 = tris[i+2];
+                triUvs[0] = uvs[tris[i]];
+                triUvs[1] = uvs[tris[i + 1]];
+                triUvs[2] = uvs[tris[i + 2]];
 
-                Matrix4x4 bm0 = boneMatrices[boneWeights[vertexIndex].boneIndex0];
-                Matrix4x4 bm1 = boneMatrices[boneWeights[vertexIndex].boneIndex1];
-                Matrix4x4 bm2 = boneMatrices[boneWeights[vertexIndex].boneIndex2];
-                Matrix4x4 bm3 = boneMatrices[boneWeights[vertexIndex].boneIndex3];
+                triNormals[0] = normals[tris[i]];
+                triNormals[1] = normals[tris[i + 1]];
+                triNormals[2] = normals[tris[i + 2]];
 
-                for (int n = 0; n < 16; n++)
-                {
-                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex].weight0 + bm1[n] * boneWeights[vertexIndex].weight1 + bm2[n] * boneWeights[vertexIndex].weight2 + bm3[n] * boneWeights[vertexIndex].weight3;
-                }
-
-                //tris[i]
-                triVerts[0] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex]);
-                triUvs[0] = uvs[vertexIndex];
-                triNormals[0] = normals[vertexIndex];
-                triTangents[0] = tangents[vertexIndex];
-
-                bm0 = boneMatrices[boneWeights[vertexIndex1].boneIndex0];
-                bm1 = boneMatrices[boneWeights[vertexIndex1].boneIndex1];
-                bm2 = boneMatrices[boneWeights[vertexIndex1].boneIndex2];
-                bm3 = boneMatrices[boneWeights[vertexIndex1].boneIndex3];
-
-                for (int n = 0; n < 16; n++)
-                {
-                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex1].weight0 + bm1[n] * boneWeights[vertexIndex1].weight1 + bm2[n] * boneWeights[vertexIndex1].weight2 + bm3[n] * boneWeights[vertexIndex1].weight3;
-                }
-
-                triVerts[1] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex1]);
-                triUvs[1] = uvs[vertexIndex1];
-                triNormals[1] = normals[vertexIndex1];
-                triTangents[1] = tangents[vertexIndex1];
-
-                bm0 = boneMatrices[boneWeights[vertexIndex2].boneIndex0];
-                bm1 = boneMatrices[boneWeights[vertexIndex2].boneIndex1];
-                bm2 = boneMatrices[boneWeights[vertexIndex2].boneIndex2];
-                bm3 = boneMatrices[boneWeights[vertexIndex2].boneIndex3];
-
-                for (int n = 0; n < 16; n++)
-                {
-                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex2].weight0 + bm1[n] * boneWeights[vertexIndex2].weight1 + bm2[n] * boneWeights[vertexIndex2].weight2 + bm3[n] * boneWeights[vertexIndex2].weight3;
-                }
-
-                triVerts[2] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex2]);
-                triUvs[2] = uvs[vertexIndex2];
-                triNormals[2] = normals[vertexIndex2];
-                triTangents[2] = tangents[vertexIndex2];
+                triTangents[0] = tangents[tris[i]];
+                triTangents[1] = tangents[tris[i + 1]];
+                triTangents[2] = tangents[tris[i + 2]];
 
                 DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
                 if (intersected[0] || intersected[1] || intersected[2])
@@ -230,7 +176,6 @@ public class CutMeshV9 : MonoBehaviour
         for (int i = 0; i < groupedVerts.Count; i++)
         {
             faceLoops.Add(new IntersectionLoop(groupedVerts[i]));
-            Debug.Log(groupedVerts[i].Count);
         }
 
         CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
@@ -540,24 +485,12 @@ public class CutMeshV9 : MonoBehaviour
                 partNormals[i][k] = partNormals[i][k];
             }
 
-            Debug.Log(partTris[i].SubmeshTris.Count);
-
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
-
-            if (partTris[i].SubmeshTris.Count > 0)
-            {
-                newPartMesh.subMeshCount = 2;
-                newPartMesh.SetVertices(partVerts[i]);
-                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
-                newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
-            }else
-            {
-                newPartMesh.subMeshCount = 1;
-                newPartMesh.SetVertices(partVerts[i]);
-                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
-            }
-
+            newPartMesh.subMeshCount = 2;
+            newPartMesh.SetVertices(partVerts[i]);
+            newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+            newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
             newPartMesh.SetNormals(partNormals[i]);
             newPartMesh.SetTangents(partTangents[i]);
             newPartMesh.SetUVs(0, partUvs[i]);

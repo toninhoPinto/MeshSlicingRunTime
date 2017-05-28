@@ -11,6 +11,8 @@ public class ListPooler {
     List<BetterLinkedList<Vector4>> poolingLinkedListVector4;
     List<BetterLinkedList<Vector2>> poolingLinkedListVector2;
 
+    List<List<BoneWeight>> poolingListBoneWeight;
+
     List<List<int>> poolingListIndexes;
     List<OrderedHashSet<Vector3>> poolingHashSets;
     VectorEqualityComparer comparer;
@@ -26,6 +28,8 @@ public class ListPooler {
         poolingLinkedListVector4 = new List<BetterLinkedList<Vector4>>();
         poolingLinkedListVector2 = new List<BetterLinkedList<Vector2>>();
 
+        poolingListBoneWeight = new List<List<BoneWeight>>();
+
         poolingListIndexes = new List<List<int>>();
         poolingHashSets = new List<OrderedHashSet<Vector3>>();
         comparer = new VectorEqualityComparer();
@@ -40,6 +44,19 @@ public class ListPooler {
 
         List<Vector3> toBeReturned = poolingList[size - 1];
         poolingList.RemoveAt(size - 1);
+
+        return toBeReturned;
+    }
+
+    public List<BoneWeight> GetPooledListBoneWeight()
+    {
+        int size = poolingListBoneWeight.Count;
+
+        if (size == 0)
+            return new List<BoneWeight>();
+
+        List<BoneWeight> toBeReturned = poolingListBoneWeight[size - 1];
+        poolingListBoneWeight.RemoveAt(size - 1);
 
         return toBeReturned;
     }
@@ -215,6 +232,13 @@ public class ListPooler {
 
         return toBeReturned;
     }
+
+    public void PoolList(List<BoneWeight> dedList)
+    {
+        dedList.Clear();
+        poolingListBoneWeight.Add(dedList);
+    }
+
 
     public void PoolList(List<Vector3> dedList)
     {

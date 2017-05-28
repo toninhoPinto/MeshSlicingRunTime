@@ -16,7 +16,7 @@ public struct Edge
     }
 }
 
-public class CutMeshV3 : MonoBehaviour
+public class CutSimpleConcave : MonoBehaviour
 {
 
     public GameObject target;
@@ -288,12 +288,12 @@ public class CutMeshV3 : MonoBehaviour
             if (planeNormal.y != 0)
             {
                 float normalDir = Mathf.Sign(planeNormal.y);
-                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).y, (x - center).x)));
+                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)));
             }
             else
             {
                 float normalDir = Mathf.Sign(planeNormal.z);
-                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)));
+                partVerts.AddRange(centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).x, (x - center).y)));
             }
 
             partVerts.Add(center);

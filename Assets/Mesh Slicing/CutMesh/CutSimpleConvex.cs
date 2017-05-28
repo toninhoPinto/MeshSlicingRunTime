@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-public class CutMeshV2 : MonoBehaviour {
+public class CutSimpleConvex : MonoBehaviour {
 
     public GameObject target;
     public GameObject prefabPart;
@@ -95,15 +95,6 @@ public class CutMeshV2 : MonoBehaviour {
                 Vector3[] triVerts = { worldp1, worldp2, worldp3 };
                 Vector3[] triNormals = { normal1, normal2, normal3 };
 
-                /*
-                Debug.Log(normals[tris[i]]);
-                Debug.Log(normals[tris[i + 1]]);
-                Debug.Log(normals[tris[i + 2]]);
-                Debug.Log(normal1);
-                Debug.Log(normal2);
-                Debug.Log(normal3);
-                */
-
                 HandleIntersectionPoints(intersected, triVerts, triUvs, triNormals);
             }
             else
@@ -147,7 +138,16 @@ public class CutMeshV2 : MonoBehaviour {
             center += centerVerts[i];
         center /= centerVerts.Count;
 
-        centerVerts = centerVerts.OrderBy(x => Mathf.Atan2((x - center).y, (x - center).x)).ToList();
+        if (planeNormal.y != 0)
+        {
+            float normalDir = Mathf.Sign(planeNormal.y);
+            centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)).ToList();
+        }
+        else
+        {
+            float normalDir = Mathf.Sign(planeNormal.z);
+            centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).x, (x - center).y)).ToList();
+        }
 
         HandleIntersectedZone(upVerts, upTris, upUVs, upNormals, center, true);
         HandleIntersectedZone(downVerts, downTris, downUVs, downNormals, center, false);

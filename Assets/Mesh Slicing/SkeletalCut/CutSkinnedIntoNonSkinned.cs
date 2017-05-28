@@ -2,29 +2,30 @@
 using UnityEngine;
 using System.Linq;
 
-public class CutMeshV7 : MonoBehaviour
+public class CutSkinnedIntoNonSkinned : MonoBehaviour
 {
 
     public GameObject target;
     public GameObject prefabPart;
     Vector3 planeNormal;
     Vector3 planePoint;
+    Vector4 planeTangent;
     Mesh myMesh;
     Renderer targetRenderer;
 
-    List<BetterLinkedList<Vector3>> upVerts;
+    List<List<Vector3>> upVerts;
     List<OrderedHashSet<Vector3>> uphashVerts;
     List<ProtoMesh> upTris;
-    List<BetterLinkedList<Vector2>> upUVs;
-    List<BetterLinkedList<Vector3>> upNormals;
-    List<BetterLinkedList<Vector4>> upTangents;
+    List<List<Vector2>> upUVs;
+    List<List<Vector3>> upNormals;
+    List<List<Vector4>> upTangents;
 
-    List<BetterLinkedList<Vector3>> downVerts;
+    List<List<Vector3>> downVerts;
     List<OrderedHashSet<Vector3>> downhashVerts;
     List<ProtoMesh> downTris;
-    List<BetterLinkedList<Vector2>> downUVs;
-    List<BetterLinkedList<Vector3>> downNormals;
-    List<BetterLinkedList<Vector4>> downTangents;
+    List<List<Vector2>> downUVs;
+    List<List<Vector3>> downNormals;
+    List<List<Vector4>> downTangents;
 
     List<Edge> centerEdges;
 
@@ -61,6 +62,7 @@ public class CutMeshV7 : MonoBehaviour
         {
             Cut();
         }
+
     }
 
     void CutMesh()
@@ -69,85 +71,162 @@ public class CutMeshV7 : MonoBehaviour
         planeNormal = -transform.forward;
         planeNormal = planeNormal.normalized;
         planePoint = transform.position;
+        planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
         //==================================================
 
-        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
+        SkinnedMeshRenderer skin = target.GetComponentInChildren<SkinnedMeshRenderer>();
+        Mesh targetMesh = skin.sharedMesh;
         targetRenderer = target.GetComponent<Renderer>();
 
-        int[] tris = targetMesh.triangles;
+        List<int> tris;
         Vector2[] uvs = targetMesh.uv;
         Vector3[] verts = targetMesh.vertices;
         Vector3[] normals = targetMesh.normals;
         Vector4[] tangents = targetMesh.tangents;
 
-        upVerts = new List<BetterLinkedList<Vector3>>();
-        uphashVerts = new List<OrderedHashSet<Vector3>>();
-        upTris = new List<ProtoMesh>();
-        upUVs = new List<BetterLinkedList<Vector2>>();
-        upNormals = new List<BetterLinkedList<Vector3>>();
-        upTangents = new List<BetterLinkedList<Vector4>>();
+        Transform[] bones = skin.bones;
+        List<Matrix4x4> bindPoses = new List<Matrix4x4>();
+        targetMesh.GetBindposes(bindPoses);
 
-        downVerts = new List<BetterLinkedList<Vector3>>();
+        Matrix4x4[] boneMatrices = new Matrix4x4[bones.Length];
+        for (int i = 0; i < bones.Length; i++)
+        {
+            boneMatrices[i] = bones[i].localToWorldMatrix * bindPoses[i];
+        }
+
+        List<BoneWeight> boneWeights = new List<BoneWeight>();
+        targetMesh.GetBoneWeights(boneWeights);
+
+        upVerts = new List<List<Vector3>>();
+        uphashVerts = new List<OrderedHashSet<Vector3>>();
+
+        upTris = new List<ProtoMesh>();
+        upUVs = new List<List<Vector2>>();
+        upNormals = new List<List<Vector3>>();
+        upTangents = new List<List<Vector4>>();
+
+        downVerts = new List<List<Vector3>>();
         downhashVerts = new List<OrderedHashSet<Vector3>>();
         downTris = new List<ProtoMesh>();
-        downUVs = new List<BetterLinkedList<Vector2>>();
-        downNormals = new List<BetterLinkedList<Vector3>>();
-        downTangents = new List<BetterLinkedList<Vector4>>();
+        downUVs = new List<List<Vector2>>();
+        downNormals = new List<List<Vector3>>();
+        downTangents = new List<List<Vector4>>();
 
         centerEdges = new List<Edge>();
         bool[] intersected = new bool[3];
 
-        for (int i = 0; i < tris.Length; i += 3)
+        float submeshCount = targetMesh.subMeshCount;
+
+        List<int> bigMeshVertsSizeUp = listPooler.GetPooledList();
+        List<int> bigMeshVertsSizeDown = listPooler.GetPooledList();
+
+        Matrix4x4 vertexBoneMatrix = new Matrix4x4();
+
+        for (int j = 0; j < submeshCount; j++)
         {
-            triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
-            triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
-            triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
-
-            triUvs[0] = uvs[tris[i]];
-            triUvs[1] = uvs[tris[i + 1]];
-            triUvs[2] = uvs[tris[i + 2]];
-
-            triNormals[0] = normals[tris[i]];
-            triNormals[1] = normals[tris[i + 1]];
-            triNormals[2] = normals[tris[i + 2]];
-
-            triTangents[0] = tangents[tris[i]];
-            triTangents[1] = tangents[tris[i + 1]];
-            triTangents[2] = tangents[tris[i + 2]];
-
-            DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
-            if (intersected[0] || intersected[1] || intersected[2])
+            tris = listPooler.GetPooledList();
+            targetMesh.GetTriangles(tris, j);
+            for (int i = 0; i < tris.Count; i += 3)
             {
-                TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
-            }
-            else
-            {
-                if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
-                {//above
-                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                int vertexIndex = tris[i];
+                int vertexIndex1 = tris[i+1];
+                int vertexIndex2 = tris[i+2];
+
+                Matrix4x4 bm0 = boneMatrices[boneWeights[vertexIndex].boneIndex0];
+                Matrix4x4 bm1 = boneMatrices[boneWeights[vertexIndex].boneIndex1];
+                Matrix4x4 bm2 = boneMatrices[boneWeights[vertexIndex].boneIndex2];
+                Matrix4x4 bm3 = boneMatrices[boneWeights[vertexIndex].boneIndex3];
+
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex].weight0 + bm1[n] * boneWeights[vertexIndex].weight1 + bm2[n] * boneWeights[vertexIndex].weight2 + bm3[n] * boneWeights[vertexIndex].weight3;
+                }
+
+                //tris[i]
+                triVerts[0] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex]);
+                triUvs[0] = uvs[vertexIndex];
+                triNormals[0] = normals[vertexIndex];
+                triTangents[0] = tangents[vertexIndex];
+
+                bm0 = boneMatrices[boneWeights[vertexIndex1].boneIndex0];
+                bm1 = boneMatrices[boneWeights[vertexIndex1].boneIndex1];
+                bm2 = boneMatrices[boneWeights[vertexIndex1].boneIndex2];
+                bm3 = boneMatrices[boneWeights[vertexIndex1].boneIndex3];
+
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex1].weight0 + bm1[n] * boneWeights[vertexIndex1].weight1 + bm2[n] * boneWeights[vertexIndex1].weight2 + bm3[n] * boneWeights[vertexIndex1].weight3;
+                }
+
+                triVerts[1] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex1]);
+                triUvs[1] = uvs[vertexIndex1];
+                triNormals[1] = normals[vertexIndex1];
+                triTangents[1] = tangents[vertexIndex1];
+
+                bm0 = boneMatrices[boneWeights[vertexIndex2].boneIndex0];
+                bm1 = boneMatrices[boneWeights[vertexIndex2].boneIndex1];
+                bm2 = boneMatrices[boneWeights[vertexIndex2].boneIndex2];
+                bm3 = boneMatrices[boneWeights[vertexIndex2].boneIndex3];
+
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex2].weight0 + bm1[n] * boneWeights[vertexIndex2].weight1 + bm2[n] * boneWeights[vertexIndex2].weight2 + bm3[n] * boneWeights[vertexIndex2].weight3;
+                }
+
+                triVerts[2] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex2]);
+                triUvs[2] = uvs[vertexIndex2];
+                triNormals[2] = normals[vertexIndex2];
+                triTangents[2] = tangents[vertexIndex2];
+
+                DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
+                if (intersected[0] || intersected[1] || intersected[2])
+                {
+                    TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
                 }
                 else
                 {
-                    AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
+                    {//above
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                    }
+                    else
+                    {
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                    }
                 }
+
             }
 
+            if (j == 0 )
+            {
+                for (int k = 0; k < upVerts.Count; k++)
+                {
+                    bigMeshVertsSizeUp.Add(upVerts[k].Count);
+                }
+
+                for (int k = 0; k < downVerts.Count; k++)
+                {
+                    bigMeshVertsSizeDown.Add(downVerts[k].Count);
+                }
+            }
+                
+            listPooler.PoolList(tris);
         }
 
-        if (centerEdges.Count == 0)
+        if (centerEdges.Count == 0 || upVerts.Count == 0 || downVerts.Count == 0)
         {
             return;
         }
 
-        CreateBodyTris(upVerts, upTris);
-        CreateBodyTris(downVerts, downTris);
+        CreateBodyTris(upVerts, upTris, bigMeshVertsSizeUp);
+        CreateBodyTris(downVerts, downTris, bigMeshVertsSizeDown);
 
-        List<List<int>> groupedVerts = GroupConnectedCenterVerts();
+        List<List<Vector3>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
         for (int i = 0; i < groupedVerts.Count; i++)
         {
-            faceLoops.Add(new IntersectionLoop(groupedVerts[i], centerEdges));
+            faceLoops.Add(new IntersectionLoop(groupedVerts[i]));
         }
 
         CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
@@ -159,18 +238,17 @@ public class CutMeshV7 : MonoBehaviour
         Destroy(target);
     }
 
-    void MyRemoveAt<T>(List<BetterLinkedList<T>> list, int k)
+    void MyRemoveAt<T>(List<List<T>> list, int k)
     {
-        BetterLinkedList<T> tmp = list[list.Count - 1];
+        List<T> tmp = list[list.Count - 1];
         list[list.Count - 1] = list[k];
         list[k] = tmp;
         list.RemoveAt(list.Count - 1);
     }
 
-    void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<BetterLinkedList<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
-        List<BetterLinkedList<Vector3>> normalParts, List<BetterLinkedList<Vector2>> UVParts, List<BetterLinkedList<Vector4>> tangentParts)
+    void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+        List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
-
         List<int> indexFound = listPooler.GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
@@ -182,16 +260,11 @@ public class CutMeshV7 : MonoBehaviour
 
         if (indexFound.Count == 0)
         {
-            if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
-                Debug.Log("how the fuck");
-
-            if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
-                Debug.Log("how the fuck2");
-            vertParts.Add(listPooler.GetPooledLinkedListVector3(wPos[0], wPos[1], wPos[2]));
+            vertParts.Add(listPooler.GetPooledListVector3(wPos[0], wPos[1], wPos[2]));
             vertPartsHashed.Add(listPooler.GetPooledHashSet(wPos[0], wPos[1], wPos[2]));
-            normalParts.Add(listPooler.GetPooledLinkedListVector3(wNormals[0], wNormals[1], wNormals[2]));
-            UVParts.Add(listPooler.GetPooledLinkedListVector2(UVs[0], UVs[1], UVs[2]));
-            tangentParts.Add(listPooler.GetPooledLinkedListVector4(tangents[0], tangents[1], tangents[2]));
+            normalParts.Add(listPooler.GetPooledListVector3(wNormals[0], wNormals[1], wNormals[2]));
+            UVParts.Add(listPooler.GetPooledListVector2(UVs[0], UVs[1], UVs[2]));
+            tangentParts.Add(listPooler.GetPooledListVector4(tangents[0], tangents[1], tangents[2]));
         }
         else
         {
@@ -247,20 +320,26 @@ public class CutMeshV7 : MonoBehaviour
         listPooler.PoolList(indexFound);
     }
 
-    void CreateBodyTris(List<BetterLinkedList<Vector3>> partVerts, List<ProtoMesh> partTris)
+    void CreateBodyTris(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<int> limit)
     {
         for (int i = 0; i < partVerts.Count; i++)
         {
-            List<int> newListTris = listPooler.GetPooledList();
+            List<int> newListBodyTris = listPooler.GetPooledList();
+            List<int> newListSubMeshTris = listPooler.GetPooledList();
+
             for (int k = 0; k < partVerts[i].Count; k++)
             {
-                newListTris.Add(k);
+                if (k < limit[i])
+                    newListBodyTris.Add(k);
+                else
+                    newListSubMeshTris.Add(k);
             }
-            partTris.Add(new ProtoMesh(newListTris, listPooler.GetPooledList()));
+            partTris.Add(new ProtoMesh(newListBodyTris, newListSubMeshTris));
         }
+        listPooler.PoolList(limit);
     }
 
-    List<List<int>> GroupConnectedCenterVerts()
+    List<List<Vector3>> GroupConnectedCenterVerts()
     {
         bool[] visited = new bool[centerEdges.Count];
 
@@ -271,17 +350,20 @@ public class CutMeshV7 : MonoBehaviour
         Vector3 end = centerEdges[nextEdge].end;
         visited[nextEdge] = true;
 
-        List<List<int>> groupedEdgesConnected = new List<List<int>>();
-        List<int> tmpEdgesConnected = new List<int>();
-        tmpEdgesConnected.Add(nextEdge);
+        List<List<Vector3>> groupedEdgesConnected = new List<List<Vector3>>();
+        List<Vector3> tmpEdgesConnected = listPooler.GetPooledListVector3();
+        tmpEdgesConnected.Add(start);
+        tmpEdgesConnected.Add(end);
+       
         bool finished = false;
         while (!finished)
         {
             for (int i = 0; i < centerEdges.Count; i++)
             {
 
-                if (EdgeA.Equals(EdgeB) && tmpEdgesConnected.Count > 1)// did a loop
+                if ((EdgeA == EdgeB || start == end) && tmpEdgesConnected.Count > 2)// did a loop
                 {
+                    tmpEdgesConnected.RemoveAt(tmpEdgesConnected.Count - 1);
                     groupedEdgesConnected.Add(tmpEdgesConnected);
                     finished = true;
                     for (int j = 0; j < visited.Length; j++)
@@ -307,9 +389,9 @@ public class CutMeshV7 : MonoBehaviour
                     start = centerEdges[nextEdge].start;
                     EdgeB = nextEdge;
                     end = centerEdges[nextEdge].end;
-                    tmpEdgesConnected = new List<int>();
+                    tmpEdgesConnected = listPooler.GetPooledListVector3();
                     visited[nextEdge] = true;
-                    tmpEdgesConnected.Add(nextEdge);
+                    tmpEdgesConnected.Add(start);
                 }
 
                 if (visited[i])
@@ -317,25 +399,28 @@ public class CutMeshV7 : MonoBehaviour
 
                 if (start == centerEdges[i].start || start == centerEdges[i].end)
                 {
-                    tmpEdgesConnected.Add(i);
-                    EdgeA = i;
-                    visited[EdgeA] = true;
                     if (start == centerEdges[i].start)
                         start = centerEdges[i].end;
                     else
                         start = centerEdges[i].start;
+
+                    if (!visited[i])
+                        tmpEdgesConnected.Add(start);
+                    EdgeA = i;
+                    visited[EdgeA] = true;
                 }
 
                 if (end == centerEdges[i].start || end == centerEdges[i].end)
                 {
-                    if (!visited[i])
-                        tmpEdgesConnected.Add(i);
-                    EdgeB = i;
-                    visited[EdgeB] = true;
                     if (end == centerEdges[i].start)
                         end = centerEdges[i].end;
                     else
                         end = centerEdges[i].start;
+
+                    if (!visited[i])
+                        tmpEdgesConnected.Add(end);
+                    EdgeB = i;
+                    visited[EdgeB] = true;
                 }
 
 
@@ -347,15 +432,15 @@ public class CutMeshV7 : MonoBehaviour
         return groupedEdgesConnected;
     }
 
-    void CreateHullMeshFromEdgeLoop(List<BetterLinkedList<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
-        List<ProtoMesh> partTris, List<BetterLinkedList<Vector2>> partUvs, List<BetterLinkedList<Vector3>> partNormals, List<BetterLinkedList<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
+    void CreateHullMeshFromEdgeLoop(List<List<Vector3>> partVerts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+        List<ProtoMesh> partTris, List<List<Vector2>> partUvs, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<IntersectionLoop> centerGroups, bool top)
     {
-
+        List<Vector3> centerVerts;
         for (int i = 0; i < vertPartsHashed.Count; i++)
         {
             for (int j = 0; j < centerGroups.Count; j++)
             {
-                List<Vector3> centerVerts = centerGroups[j].verts;
+                centerVerts = centerGroups[j].verts;
                 if (vertPartsHashed[i].Contains(centerVerts[0]))
                 {
                     List<int> centerTris = listPooler.GetPooledList();
@@ -378,7 +463,7 @@ public class CutMeshV7 : MonoBehaviour
 
                     if (top)
                     {
-                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 2; k++)
                         {
                             centerTris.Add(k);
                             centerTris.Add(k + 1);
@@ -391,7 +476,7 @@ public class CutMeshV7 : MonoBehaviour
                     }
                     else
                     {
-                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 1; k++)
+                        for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count - 2; k++)
                         {
                             centerTris.Add(k);
                             centerTris.Add(partVerts[i].Count - 1);
@@ -402,6 +487,7 @@ public class CutMeshV7 : MonoBehaviour
                         centerTris.Add(partVerts[i].Count - 1);
                         centerTris.Add(sizeVertsBeforeCenter);
                     }
+
                     partTris[i].SubmeshTris.AddRange(centerTris);
                     listPooler.PoolList(centerTris);
 
@@ -411,25 +497,17 @@ public class CutMeshV7 : MonoBehaviour
                         normal = planeNormal;
                     else
                         normal = -planeNormal;
-
-                    Vector2 newUV;
-                    for (int k = 0; k < centerVerts.Count; k++)
+                    for (int k = sizeVertsBeforeCenter; k < partVerts[i].Count; k++)
                     {
-                        newUV = transform.worldToLocalMatrix.MultiplyPoint(centerVerts[k]);
+                        Vector2 newUV = transform.worldToLocalMatrix.MultiplyPoint(partVerts[i][k]);
                         newUV.x += 0.5f;
                         newUV.y += 0.5f;
                         partUvs[i].Add(newUV);
 
                         partNormals[i].Add(normal);
-                        partTangents[i].Add(new Vector4(1, 0, 0, -1)); //isto provavelmente podia estar numa variavel separada, não há razão para criar uma tangent nova se são todas iguais, ou não, tenho de ver se são todas iguais ou não
+                        partTangents[i].Add(planeTangent);
                     }
-                    newUV = transform.worldToLocalMatrix.MultiplyPoint(center);
-                    newUV.x += 0.5f;
-                    newUV.y += 0.5f;
-                    partUvs[i].Add(newUV);
 
-                    partNormals[i].Add(normal);
-                    partTangents[i].Add(new Vector4(1, 0, 0, -1));
                 }
 
             }
@@ -437,7 +515,7 @@ public class CutMeshV7 : MonoBehaviour
         }
     }
 
-    void CreateFinalGameObjects(List<BetterLinkedList<Vector3>> partVerts, List<ProtoMesh> partTris, List<BetterLinkedList<Vector3>> partNormals, List<BetterLinkedList<Vector4>> partTangents, List<BetterLinkedList<Vector2>> partUvs)
+    void CreateFinalGameObjects(List<List<Vector3>> partVerts, List<ProtoMesh> partTris, List<List<Vector3>> partNormals, List<List<Vector4>> partTangents, List<List<Vector2>> partUvs)
     {
 
         for (int i = 0; i < partVerts.Count; i++)
@@ -446,36 +524,33 @@ public class CutMeshV7 : MonoBehaviour
             newPart.transform.localScale = target.transform.localScale;
             newPart.transform.rotation = target.transform.rotation;
 
-            Node<Vector3> currIterator = partVerts[i].start;
-            currIterator.value = newPart.transform.InverseTransformPoint(currIterator.value);
-            while (partVerts[i].current != currIterator)
+            for (int k = 0; k < partVerts[i].Count; k++)
             {
-                currIterator.value = newPart.transform.InverseTransformPoint(currIterator.value);
-                currIterator = currIterator.nextNode;
+                partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
             }
-
-            Debug.Log(partVerts[i].ToList().Count);
-            Debug.Log(partNormals[i].ToList().Count);
-            Debug.Log(partTangents[i].ToList().Count);
-            Debug.Log(partUvs[i].ToList().Count);
 
             Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
             newPartMesh.Clear();
-            newPartMesh.subMeshCount = 2;
-            newPartMesh.SetVertices(partVerts[i].ToList());
-            newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
-            newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
-            newPartMesh.SetNormals(partNormals[i].ToList());
-            newPartMesh.SetTangents(partTangents[i].ToList());
-            newPartMesh.SetUVs(0, partUvs[i].ToList());
+
+            newPartMesh.SetVertices(partVerts[i]);
+            if (partTris[i].SubmeshTris.Count > 0)
+            {
+                newPartMesh.subMeshCount = 2;
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+                newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
+            }else
+            {
+                newPartMesh.subMeshCount = 1;
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+            }
+
+            newPartMesh.SetNormals(partNormals[i]);
+            newPartMesh.SetTangents(partTangents[i]);
+            newPartMesh.SetUVs(0, partUvs[i]);
             newPartMesh.RecalculateBounds();
             newPart.GetComponent<Renderer>().material = targetRenderer.material;
             newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
 
-            listPooler.PoolList(partVerts[i]);
-            listPooler.PoolList(partNormals[i]);
-            listPooler.PoolList(partUvs[i]);
-            listPooler.PoolList(partTangents[i]);
             //return protoMesh lists to the pool (need to think if the structs themselves could be pooled aswell somehow)
             listPooler.PoolList(partTris[i].BodyTris);
             listPooler.PoolList(partTris[i].SubmeshTris);
@@ -490,7 +565,7 @@ public class CutMeshV7 : MonoBehaviour
 
         intersections[0] = upOrDown != upOrDown2;
         intersections[1] = upOrDown2 != upOrDown3;
-        intersections[2] = upOrDown != upOrDown3 ;
+        intersections[2] = upOrDown != upOrDown3;
     }
 
     void TriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
@@ -672,6 +747,8 @@ public class CutMeshV7 : MonoBehaviour
 
             AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
         }
+
+
 
         triVerts[0] = tmpUpVerts[0];
         triVerts[1] = tmpUpVerts[1];
