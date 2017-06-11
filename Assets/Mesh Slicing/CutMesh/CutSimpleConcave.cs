@@ -21,9 +21,9 @@ public class CutSimpleConcave : MonoBehaviour
 
     public GameObject target;
     public GameObject prefabPart;
+
     Vector3 planeNormal;
     Vector3 planePoint;
-    Mesh myMesh;
 
     List<Vector3> upVerts;
     List<int> upTris;
@@ -40,9 +40,20 @@ public class CutSimpleConcave : MonoBehaviour
     GameObject topPart;
     GameObject bottomPart;
 
+    Vector3[] triVerts;
+    Vector2[] triUvs;
+    Vector3[] triNormals;
+
     void Start()
     {
-        myMesh = GetComponent<MeshFilter>().mesh;
+        triVerts = new Vector3[3];
+        triUvs = new Vector2[3];
+        triNormals = new Vector3[3];
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        target = other.gameObject;
     }
 
     void Update()
@@ -63,9 +74,8 @@ public class CutSimpleConcave : MonoBehaviour
     void CutMesh()
     {
         //SETUP QUAD VARIABLES==================================================
-        planeNormal = transform.TransformVector(myMesh.normals[0]);
-        planeNormal = planeNormal.normalized;
-        planePoint = transform.TransformPoint(myMesh.vertices[0]);
+        planeNormal = (-transform.forward).normalized; //cheaper than accessing the normals of the mesh
+        planePoint = transform.position; //cheaper than accessing the vertexes of the mesh
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
@@ -107,9 +117,17 @@ public class CutSimpleConcave : MonoBehaviour
 
             if (intersected[0] || intersected[1] || intersected[2]) //if triangle intersects with plane
             {
-                Vector2[] triUvs = { uv1, uv2, uv3 };
-                Vector3[] triVerts = { worldp1, worldp2, worldp3 };
-                Vector3[] triNormals = { normal1, normal2, normal3 };
+                triVerts[0] = worldp1;
+                triVerts[1] = worldp2;
+                triVerts[2] = worldp3;
+
+                triUvs[0] = uv1;
+                triUvs[1] = uv2;
+                triUvs[2] = uv3;
+
+                triNormals[0] = normal1;
+                triNormals[1] = normal2;
+                triNormals[2] = normal3;
                 TrianglePlaneIntersection(intersected, triVerts, triUvs, triNormals);
             }
             else
@@ -127,9 +145,9 @@ public class CutSimpleConcave : MonoBehaviour
                     upUVs.Add(uv1);
                     upUVs.Add(uv2);
                     upUVs.Add(uv3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal1).normalized * 3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal2).normalized * 3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal3).normalized * 3);
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal1).normalized);
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal2).normalized);
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal3).normalized);
                 }
                 else  //if the triangle does not intersect but instead is below the plane
                 {//copy the vertices, the triangles, the uvs and the normals and store it in the lists for the new mesh below the plane
@@ -142,9 +160,9 @@ public class CutSimpleConcave : MonoBehaviour
                     downUVs.Add(uv1);
                     downUVs.Add(uv2);
                     downUVs.Add(uv3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal1).normalized * 3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal2).normalized * 3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal3).normalized * 3);
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal1).normalized);
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal2).normalized);
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal3).normalized);
                 }
             }
         }
@@ -430,15 +448,15 @@ public class CutSimpleConcave : MonoBehaviour
         //---------------------------------
         Vector3 topNewVert = topPart.transform.InverseTransformPoint(newVert);
         Vector3 botNewVert = bottomPart.transform.InverseTransformPoint(newVert);
-        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal).normalized * 3;
-        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal).normalized * 3;
+        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal).normalized;
+        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal).normalized;
 
         if (upOrDown > 0)
         {
             p1 = topPart.transform.InverseTransformPoint(p1);
             p2 = bottomPart.transform.InverseTransformPoint(p2);
-            n1 = topPart.transform.InverseTransformVector(n1).normalized * 3;
-            n2 = bottomPart.transform.InverseTransformVector(n2).normalized * 3;
+            n1 = topPart.transform.InverseTransformVector(n1).normalized;
+            n2 = bottomPart.transform.InverseTransformVector(n2).normalized;
 
             if (!top.Contains(p1))
             {
@@ -462,18 +480,18 @@ public class CutSimpleConcave : MonoBehaviour
                 downNormals.Add(n2);
             }
 
-            return topPart.transform.InverseTransformPoint(newVert);
+            return topNewVert;
         }
         else
         {
             p2 = topPart.transform.InverseTransformPoint(p2);
             p1 = bottomPart.transform.InverseTransformPoint(p1);
-            n2 = topPart.transform.InverseTransformVector(n2).normalized *3;
-            n1 = bottomPart.transform.InverseTransformVector(n1).normalized * 3;
+            n2 = topPart.transform.InverseTransformVector(n2).normalized;
+            n1 = bottomPart.transform.InverseTransformVector(n1).normalized;
 
             top.Add(topNewVert);
             upUVs.Add(newUv);
-            upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+            upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized);
 
             if (!top.Contains(p2))
             {

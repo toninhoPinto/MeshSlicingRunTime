@@ -7,30 +7,53 @@ public class CutSimpleConvex : MonoBehaviour {
 
     public GameObject target;
     public GameObject prefabPart;
-    public bool fancy;
+
+    //Data about the cutting plane
     Vector3 planeNormal;
     Vector3 planePoint;
-    Mesh myMesh;
 
+    //Data structures for all the objects above the plane resulting from the cut 
     List<Vector3> upVerts;
     List<int> upTris;
     List<Vector2> upUVs;
     List<Vector3> upNormals;
 
+    //Data structures for all the objects below the plane resulting from the cut 
     List<Vector3> downVerts;
     List<int> downTris;
     List<Vector2> downUVs;
     List<Vector3> downNormals;
 
+    //Data structure that holds the edges of the polygons created from the cut
     List<Vector3> centerVerts;
 
+    //Two resulting gameObjects
     GameObject topPart;
     GameObject bottomPart;
 
+    //Reusable vectors
+    Vector3[] triVerts;
+    Vector2[] triUvs;
+    Vector3[] triNormals;
+
     void Start()
     {
-        myMesh = GetComponent<MeshFilter>().mesh;
-        Cut();
+        triVerts = new Vector3[3];
+        triUvs = new Vector2[3];
+        triNormals = new Vector3[3];
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        target = other.gameObject;
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.H))
+        {
+            Cut();
+        }
     }
 
     public void Cut()
@@ -38,18 +61,14 @@ public class CutSimpleConvex : MonoBehaviour {
         if (target == null)
             return;
         CutMesh();
-        PushParts();
         Destroy(target);
     }
 
     void CutMesh() {
 
         //SETUP QUAD VARIABLES==================================================
-        planeNormal = transform.TransformVector(myMesh.normals[0]);
-        planeNormal = planeNormal.normalized;
-        planePoint = transform.TransformPoint(myMesh.vertices[0]);
-
-        Debug.DrawRay(transform.position, planeNormal, Color.red, 1000f);
+        planeNormal = (-transform.forward).normalized; //cheaper than accessing the normals of the mesh
+        planePoint = transform.position; //cheaper than accessing the vertexes of the mesh
         //==================================================
 
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
@@ -84,16 +103,24 @@ public class CutSimpleConvex : MonoBehaviour {
             Vector2 uv2 = uvs[tris[i + 1]];
             Vector2 uv3 = uvs[tris[i + 2]];
 
-            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]).normalized;
-            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]).normalized;
-            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]).normalized;
+            Vector3 normal1 = target.transform.TransformVector(normals[tris[i]]);
+            Vector3 normal2 = target.transform.TransformVector(normals[tris[i + 1]]);
+            Vector3 normal3 = target.transform.TransformVector(normals[tris[i + 2]]);
             bool[] intersected = DoesTriIntersectPlane(worldp1, worldp2, worldp3);
 
             if (intersected[0] || intersected[1] || intersected[2])
             {
-                Vector2[] triUvs = { uv1, uv2, uv3 };
-                Vector3[] triVerts = { worldp1, worldp2, worldp3 };
-                Vector3[] triNormals = { normal1, normal2, normal3 };
+                triVerts[0] = worldp1;
+                triVerts[1] = worldp2;
+                triVerts[2] = worldp3;
+
+                triUvs[0] = uv1;
+                triUvs[1] = uv2;
+                triUvs[2] = uv3;
+
+                triNormals[0] = normal1;
+                triNormals[1] = normal2;
+                triNormals[2] = normal3;
 
                 HandleIntersectionPoints(intersected, triVerts, triUvs, triNormals);
             }
@@ -110,9 +137,9 @@ public class CutSimpleConvex : MonoBehaviour {
                     upUVs.Add(uv1);
                     upUVs.Add(uv2);
                     upUVs.Add(uv3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal1).normalized * 3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal2).normalized * 3);
-                    upNormals.Add(topPart.transform.InverseTransformVector(normal3).normalized * 3);
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal1));
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal2));
+                    upNormals.Add(topPart.transform.InverseTransformVector(normal3));
                 }
                 else
                 {
@@ -125,12 +152,12 @@ public class CutSimpleConvex : MonoBehaviour {
                     downUVs.Add(uv1);
                     downUVs.Add(uv2);
                     downUVs.Add(uv3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal1).normalized*3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal2).normalized * 3);
-                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal3).normalized * 3);
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal1));
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal2));
+                    downNormals.Add(bottomPart.transform.InverseTransformVector(normal3));
                 }
             }
-            //Debug.Log("-------------------------------------");
+
         }
 
         Vector3 center = Vector3.zero;
@@ -138,34 +165,31 @@ public class CutSimpleConvex : MonoBehaviour {
             center += centerVerts[i];
         center /= centerVerts.Count;
 
+        IOrderedEnumerable<Vector3> orderedInnerVerts;
+        
         if (planeNormal.y != 0)
         {
             float normalDir = Mathf.Sign(planeNormal.y);
-            centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x)).ToList();
+            orderedInnerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).z, (x - center).x));
         }
         else
         {
             float normalDir = Mathf.Sign(planeNormal.z);
-            centerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).x, (x - center).y)).ToList();
+            orderedInnerVerts = centerVerts.OrderBy(x => normalDir * Mathf.Atan2((x - center).x, (x - center).y));
         }
 
-        HandleIntersectedZone(upVerts, upTris, upUVs, upNormals, center, true);
-        HandleIntersectedZone(downVerts, downTris, downUVs, downNormals, center, false);
+        HandleIntersectedZone(upVerts, upTris, upUVs, upNormals, orderedInnerVerts, center, true);
+        HandleIntersectedZone(downVerts, downTris, downUVs, downNormals, orderedInnerVerts, center, false);
         CreateParts(topPart, upVerts, upTris, upUVs, upNormals);
         CreateParts(bottomPart, downVerts, downTris, downUVs, downNormals);
     }
 
-    void OnTriggerEnter(Collider other)
-    {
-        target = other.gameObject;
-    }
-
-    void HandleIntersectedZone(List<Vector3> partVerts, List<int> partTris, List<Vector2> partUvs, List<Vector3> partNormals, Vector3 center, bool top)
+    void HandleIntersectedZone(List<Vector3> partVerts, List<int> partTris, List<Vector2> partUvs, List<Vector3> partNormals, IOrderedEnumerable<Vector3> orderedInnerVerts, Vector3 center, bool top)
     {
         List<int> centerTris = new List<int>();
 
         int sizeVertsBeforeCenter = partVerts.Count;
-        partVerts.AddRange(centerVerts);
+        partVerts.AddRange(orderedInnerVerts);
         partVerts.Add(center);
 
         if (top)
@@ -209,24 +233,8 @@ public class CutSimpleConvex : MonoBehaviour {
 
     }
 
-    void PushParts()
-    {
-        if (fancy)
-        {
-            topPart.GetComponent<Rigidbody>().useGravity = true;
-            bottomPart.GetComponent<Rigidbody>().useGravity = true;
-
-            topPart.GetComponent<Rigidbody>().AddForce(-transform.forward.normalized * 5f, ForceMode.Impulse);
-        }
-    }
-
     void CreateParts(GameObject part, List<Vector3> partVerts, List<int> partTris, List<Vector2> partUvs, List<Vector3> partNormals)
     {
-        Debug.Log(partVerts.Count);
-        Debug.Log(partTris.Count);
-        Debug.Log(partUvs.Count);
-        Debug.Log(partNormals.Count);
-
         Mesh partMesh = part.GetComponent<MeshFilter>().mesh;
 
         partMesh.Clear();
@@ -235,16 +243,14 @@ public class CutSimpleConvex : MonoBehaviour {
         partMesh.uv = partUvs.ToArray();
         partMesh.normals = partNormals.ToArray();
         partMesh.RecalculateBounds();
+        part.GetComponent<Renderer>().material = target.GetComponent<Renderer>().material;
     }
 
     bool[] DoesTriIntersectPlane(Vector3 p1, Vector3 p2, Vector3 p3)
     {
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, p1 - planePoint));
-        //upOrDown = upOrDown > 0 ? 1 : (upOrDown < 0 ? -1 : 0);
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, p2 - planePoint));
-        //upOrDown2 = upOrDown2 > 0 ? 1 : (upOrDown2 < 0 ? -1 : 0);
         float upOrDown3 = Mathf.Sign(Vector3.Dot(planeNormal, p3 - planePoint));
-        //upOrDown3 = upOrDown3 > 0 ? 1 : (upOrDown3 < 0 ? -1 : 0);
 
         bool intersect1 = upOrDown != upOrDown2;
         bool intersect2 = upOrDown2 != upOrDown3;
@@ -344,69 +350,75 @@ public class CutSimpleConvex : MonoBehaviour {
         Vector3 newNormal = new Vector3(0, 0, 0);
         HandleBaryCentric(newVert, ref newUv, ref newNormal, verts, uvs, normals);
 
-        if (upOrDown>0)
+
+        Vector3 topNewVert = topPart.transform.InverseTransformPoint(newVert);
+        Vector3 botNewVert = bottomPart.transform.InverseTransformPoint(newVert);
+        Vector3 topNewNormal = topPart.transform.InverseTransformVector(newNormal).normalized;
+        Vector3 botNewNormal = bottomPart.transform.InverseTransformVector(newNormal).normalized;
+
+        if (upOrDown > 0)
         {
+            p1 = topPart.transform.InverseTransformPoint(p1);
+            p2 = bottomPart.transform.InverseTransformPoint(p2);
+            n1 = topPart.transform.InverseTransformVector(n1).normalized;
+            n2 = bottomPart.transform.InverseTransformVector(n2).normalized;
 
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(p1), top))
+            if (!top.Contains(p1))
             {
+                top.Add(p1);
                 upUVs.Add(uv1);
-                upNormals.Add(topPart.transform.InverseTransformVector(n1).normalized*3);
-            }
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(newVert), top))
-            {
-                upUVs.Add(newUv);
-                upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
+                upNormals.Add(n1);
             }
 
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(newVert), bottom))
+            top.Add(topNewVert);
+            upUVs.Add(newUv);
+            upNormals.Add(topNewNormal);
+
+            bottom.Add(botNewVert);
+            downUVs.Add(newUv);
+            downNormals.Add(botNewNormal);
+
+            if (!bottom.Contains(p2))
             {
-                downUVs.Add(newUv);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(newNormal).normalized * 3);
-            }
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(p2), bottom))
-            {
+                bottom.Add(p2);
                 downUVs.Add(uv2);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(n2).normalized * 3);
+                downNormals.Add(n2);
             }
 
-            centerVerts.Add(topPart.transform.InverseTransformPoint(newVert));
+            centerVerts.Add(topNewVert);
+
         }
         else
         {
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(newVert), top))
+            p2 = topPart.transform.InverseTransformPoint(p2);
+            p1 = bottomPart.transform.InverseTransformPoint(p1);
+            n2 = topPart.transform.InverseTransformVector(n2).normalized;
+            n1 = bottomPart.transform.InverseTransformVector(n1).normalized;
+
+            top.Add(topNewVert);
+            upUVs.Add(newUv);
+            upNormals.Add(topNewNormal);
+
+            if (!top.Contains(p2))
             {
-                upUVs.Add(newUv);
-                upNormals.Add(topPart.transform.InverseTransformVector(newNormal).normalized * 3);
-            }
-            if (AddUniquelyToList(topPart.transform.InverseTransformPoint(p2), top))
-            {
+                top.Add(p2);
                 upUVs.Add(uv2);
-                upNormals.Add(topPart.transform.InverseTransformVector(n2).normalized * 3);
+                upNormals.Add(n2);
             }
-
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(p1), bottom))
+            if (!bottom.Contains(p1))
             {
+                bottom.Add(p1);
                 downUVs.Add(uv1);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(n1).normalized * 3);
-            }
-            if (AddUniquelyToList(bottomPart.transform.InverseTransformPoint(newVert), bottom))
-            {
-                downUVs.Add(newUv);
-                downNormals.Add(bottomPart.transform.InverseTransformVector(newNormal).normalized * 3);
+                downNormals.Add(n1);
             }
 
-            centerVerts.Add(bottomPart.transform.InverseTransformPoint(newVert));
-        }
-    }
+            bottom.Add(botNewVert);
+            downUVs.Add(newUv);
+            downNormals.Add(botNewNormal);
 
-    bool AddUniquelyToList(Vector3 vertex, List<Vector3> list) //order is important so cant use HashSet
-    {
-        if (!list.Contains(vertex))
-        {
-            list.Add(vertex);
-            return true;
+            centerVerts.Add(botNewVert);
         }
-        return false;
+
     }
 
 

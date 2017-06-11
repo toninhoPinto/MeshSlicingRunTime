@@ -2,21 +2,17 @@
 using UnityEngine;
 using System.Linq;
 
-public class CutMultiplePartsConcave : MonoBehaviour
+public class CutMultiplePartsConcaveAndConcavePolygon : MonoBehaviour
 {
 
     public GameObject target;
     public GameObject prefabPart;
-
-    //Data about the cutting plane
     Vector3 planeNormal;
     Vector3 planePoint;
     Vector4 planeTangent;
-
-    //Data about what is being cut
+    Mesh myMesh;
     Renderer targetRenderer;
 
-    //Data structures for all the objects above the plane resulting from the cut 
     List<List<Vector3>> upVerts;
     List<OrderedHashSet<Vector3>> uphashVerts;
     List<ProtoMesh> upTris;
@@ -24,7 +20,6 @@ public class CutMultiplePartsConcave : MonoBehaviour
     List<List<Vector3>> upNormals;
     List<List<Vector4>> upTangents;
 
-    //Data structures for all the objects below the plane resulting from the cut 
     List<List<Vector3>> downVerts;
     List<OrderedHashSet<Vector3>> downhashVerts;
     List<ProtoMesh> downTris;
@@ -32,27 +27,20 @@ public class CutMultiplePartsConcave : MonoBehaviour
     List<List<Vector3>> downNormals;
     List<List<Vector4>> downTangents;
 
-    //Data structure that holds the edges of the polygons created from the cut
     List<Edge> centerEdges;
 
-    //Object Pool that holds all lists
     ListPooler listPooler;
 
-    //Reusable vectors
-    Vector3[] newTriangleEdge;
-    Vector3[] triVerts;
-    Vector2[] triUvs;
-    Vector3[] triNormals;
-    Vector4[] triTangents;
+    Vector3[] newTriangleEdge = new Vector3[2];
+
+    Vector3[] triVerts = new Vector3[3];
+    Vector2[] triUvs = new Vector2[3];
+    Vector3[] triNormals = new Vector3[3];
+    Vector4[] triTangents = new Vector4[3];
 
     void Start()
     {
-        newTriangleEdge = new Vector3[2];
-        triVerts = new Vector3[3];
-        triUvs = new Vector2[3];
-        triNormals = new Vector3[3];
-        triTangents = new Vector4[3];
-
+        myMesh = GetComponent<MeshFilter>().mesh;
         listPooler = new ListPooler();
     }
 
@@ -78,12 +66,13 @@ public class CutMultiplePartsConcave : MonoBehaviour
 
     void CutMesh()
     {
-        //setup quad variables at the time of the cut
-        planeNormal = (-transform.forward).normalized;
+        //SETUP QUAD VARIABLES==================================================
+        planeNormal = -transform.forward;
+        planeNormal = planeNormal.normalized;
         planePoint = transform.position;
         planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
+        //==================================================
 
-        //retrieve data about the target to be cut
         Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
         targetRenderer = target.GetComponent<Renderer>();
 
@@ -93,9 +82,9 @@ public class CutMultiplePartsConcave : MonoBehaviour
         Vector3[] normals = targetMesh.normals;
         Vector4[] tangents = targetMesh.tangents;
 
-        //initialize big lists (each of the inner lists represents a new object)
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet<Vector3>>();
+
         upTris = new List<ProtoMesh>();
         upUVs = new List<List<Vector2>>();
         upNormals = new List<List<Vector3>>();
@@ -109,18 +98,13 @@ public class CutMultiplePartsConcave : MonoBehaviour
         downTangents = new List<List<Vector4>>();
 
         centerEdges = new List<Edge>();
-
         bool[] intersected = new bool[3];
+
+        float submeshCount = targetMesh.subMeshCount;
 
         List<int> bigMeshVertsSizeUp = listPooler.GetPooledList();
         List<int> bigMeshVertsSizeDown = listPooler.GetPooledList();
 
-        float submeshCount = targetMesh.subMeshCount;
-
-        //for each submesh, go through the triangles
-        //do line-plane intersection for each of the 3 lines of the triangle
-        //triangles that have atleast one line intersection, calculate how to split it in two 
-        //triangles that dont intersect, if they are above, save them in one list, if bellow save them in another
         for (int j = 0; j < submeshCount; j++)
         {
             tris = listPooler.GetPooledList();
@@ -150,8 +134,8 @@ public class CutMultiplePartsConcave : MonoBehaviour
                 }
                 else
                 {
-                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)//above
-                    {
+                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
+                    {//above
                         AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
                     }
                     else
@@ -162,12 +146,6 @@ public class CutMultiplePartsConcave : MonoBehaviour
 
             }
 
-
-            //On the first target submesh saves the number of verts for the resulting cut objects
-            //The point is that, after you cut a mesh once, from a mesh it results into a 2 meshes with 2 submeshtes each (the body and the cut polygon)
-            //Once you cut one of those meshes, you need to keep the second submesh (cut polygon) as a submesh with the "cut" material
-            //So by saving the vertices resulting from the cut of the first submesh (the body)
-            //we can infer that all the remaining vertices are from cutting submeshes with the "cut" material, and they should stay that way 
             if (j == 0 )
             {
                 for (int k = 0; k < upVerts.Count; k++)
@@ -184,17 +162,14 @@ public class CutMultiplePartsConcave : MonoBehaviour
             listPooler.PoolList(tris);
         }
 
-        //if nothing was cut, stop here
         if (centerEdges.Count == 0 || upVerts.Count == 0 || downVerts.Count == 0)
         {
             return;
         }
 
-        //Create triangles for the cut bodies
         CreateBodyTris(upVerts, upTris, bigMeshVertsSizeUp);
         CreateBodyTris(downVerts, downTris, bigMeshVertsSizeDown);
 
-        //Detect all polygons resulting from the cut
         List<List<Vector3>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
@@ -203,21 +178,32 @@ public class CutMultiplePartsConcave : MonoBehaviour
             faceLoops.Add(new IntersectionLoop(groupedVerts[i]));
         }
 
-        //From the polygons create tris, normals, etc for each
         CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
         CreateHullMeshFromEdgeLoop(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
 
-        //complete the Objects
         CreateFinalGameObjects(upVerts, upTris, upNormals, upTangents, upUVs);
         CreateFinalGameObjects(downVerts, downTris, downNormals, downTangents, downUVs);
 
-        //Destroy original target object
         Destroy(target);
+    }
+
+    void MyRemoveAt<T>(List<List<T>> list, int k)
+    {
+        List<T> tmp = list[list.Count - 1];
+        list[list.Count - 1] = list[k];
+        list[k] = tmp;
+        list.RemoveAt(list.Count - 1);
     }
 
     void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
+        if (wPos[0] == wPos[1] || wPos[1] == wPos[2] || wPos[2] == wPos[0])
+            Debug.Log("how the fuck");
+
+        if (wPos[0] == wPos[1] && wPos[1] == wPos[2] && wPos[2] == wPos[0])
+            Debug.Log("how the fuck2");
+
         List<int> indexFound = listPooler.GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
@@ -709,6 +695,8 @@ public class CutMultiplePartsConcave : MonoBehaviour
             AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
         }
 
+
+
         triVerts[0] = tmpUpVerts[0];
         triVerts[1] = tmpUpVerts[1];
         triVerts[2] = tmpUpVerts[2];
@@ -764,14 +752,6 @@ public class CutMultiplePartsConcave : MonoBehaviour
         newNormal = normals[0] * a1 + normals[1] * a2 + normals[2] * a3;
         newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
         newTangent = tangents[0] * a1 + tangents[1] * a2 + tangents[2] * a3;
-    }
-
-    void MyRemoveAt<T>(List<List<T>> list, int k)
-    {
-        List<T> tmp = list[list.Count - 1];
-        list[list.Count - 1] = list[k];
-        list[k] = tmp;
-        list.RemoveAt(list.Count - 1);
     }
 
 }

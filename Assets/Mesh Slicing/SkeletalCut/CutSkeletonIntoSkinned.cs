@@ -2,21 +2,19 @@
 using UnityEngine;
 using System.Linq;
 
-public class CutMultiplePartsConcave : MonoBehaviour
+public class CutSkeletonIntoSkinned : MonoBehaviour
 {
 
     public GameObject target;
-    public GameObject prefabPart;
-
-    //Data about the cutting plane
+    public GameObject prefabBigPart;
+    public GameObject prefabSmallPart;
+    public bool keepAnimation = true;
     Vector3 planeNormal;
     Vector3 planePoint;
     Vector4 planeTangent;
-
-    //Data about what is being cut
+    Mesh myMesh;
     Renderer targetRenderer;
 
-    //Data structures for all the objects above the plane resulting from the cut 
     List<List<Vector3>> upVerts;
     List<OrderedHashSet<Vector3>> uphashVerts;
     List<ProtoMesh> upTris;
@@ -24,7 +22,6 @@ public class CutMultiplePartsConcave : MonoBehaviour
     List<List<Vector3>> upNormals;
     List<List<Vector4>> upTangents;
 
-    //Data structures for all the objects below the plane resulting from the cut 
     List<List<Vector3>> downVerts;
     List<OrderedHashSet<Vector3>> downhashVerts;
     List<ProtoMesh> downTris;
@@ -32,27 +29,27 @@ public class CutMultiplePartsConcave : MonoBehaviour
     List<List<Vector3>> downNormals;
     List<List<Vector4>> downTangents;
 
-    //Data structure that holds the edges of the polygons created from the cut
+    Matrix4x4[] bindPoses;
+    Transform[] bones;
+    int nVerts;
+    Transform parentTarget;
+    Transform targetRootBone;
+
     List<Edge> centerEdges;
 
-    //Object Pool that holds all lists
     ListPooler listPooler;
 
-    //Reusable vectors
-    Vector3[] newTriangleEdge;
-    Vector3[] triVerts;
-    Vector2[] triUvs;
-    Vector3[] triNormals;
-    Vector4[] triTangents;
+    Vector3[] newTriangleEdge = new Vector3[2];
+
+    Vector3[] triVerts = new Vector3[3];
+    Vector2[] triUvs = new Vector2[3];
+    Vector3[] triNormals = new Vector3[3];
+    Vector4[] triTangents = new Vector4[3];
+    BoneWeight[] triBoneWeight = new BoneWeight[3];
 
     void Start()
     {
-        newTriangleEdge = new Vector3[2];
-        triVerts = new Vector3[3];
-        triUvs = new Vector2[3];
-        triNormals = new Vector3[3];
-        triTangents = new Vector4[3];
-
+        myMesh = GetComponent<MeshFilter>().mesh;
         listPooler = new ListPooler();
     }
 
@@ -74,17 +71,24 @@ public class CutMultiplePartsConcave : MonoBehaviour
         {
             Cut();
         }
+
     }
 
     void CutMesh()
     {
-        //setup quad variables at the time of the cut
-        planeNormal = (-transform.forward).normalized;
+        //SETUP QUAD VARIABLES==================================================
+        planeNormal = -transform.forward;
+        planeNormal = planeNormal.normalized;
         planePoint = transform.position;
         planeTangent = new Vector4(transform.right.x, transform.right.y, transform.right.z, 1);
+        //==================================================
 
-        //retrieve data about the target to be cut
-        Mesh targetMesh = target.GetComponent<MeshFilter>().mesh;
+
+        parentTarget = target.transform.parent;
+        SkinnedMeshRenderer skin = target.GetComponent<SkinnedMeshRenderer>();
+        Mesh targetMesh = skin.sharedMesh;
+
+        targetRootBone = skin.rootBone;
         targetRenderer = target.GetComponent<Renderer>();
 
         List<int> tris;
@@ -92,10 +96,23 @@ public class CutMultiplePartsConcave : MonoBehaviour
         Vector3[] verts = targetMesh.vertices;
         Vector3[] normals = targetMesh.normals;
         Vector4[] tangents = targetMesh.tangents;
+        nVerts = verts.Length;
 
-        //initialize big lists (each of the inner lists represents a new object)
+        bones = skin.bones;
+        bindPoses = targetMesh.bindposes;
+
+        Matrix4x4[] boneMatrices = new Matrix4x4[bones.Length];
+        for (int i = 0; i < bones.Length; i++)
+        {
+            boneMatrices[i] = bones[i].localToWorldMatrix * bindPoses[i];
+        }
+
+        List<BoneWeight> boneWeights = new List<BoneWeight>();
+        targetMesh.GetBoneWeights(boneWeights);
+
         upVerts = new List<List<Vector3>>();
         uphashVerts = new List<OrderedHashSet<Vector3>>();
+
         upTris = new List<ProtoMesh>();
         upUVs = new List<List<Vector2>>();
         upNormals = new List<List<Vector3>>();
@@ -109,65 +126,97 @@ public class CutMultiplePartsConcave : MonoBehaviour
         downTangents = new List<List<Vector4>>();
 
         centerEdges = new List<Edge>();
-
         bool[] intersected = new bool[3];
+
+        float submeshCount = targetMesh.subMeshCount;
 
         List<int> bigMeshVertsSizeUp = listPooler.GetPooledList();
         List<int> bigMeshVertsSizeDown = listPooler.GetPooledList();
 
-        float submeshCount = targetMesh.subMeshCount;
+        Matrix4x4 vertexBoneMatrix = new Matrix4x4();
 
-        //for each submesh, go through the triangles
-        //do line-plane intersection for each of the 3 lines of the triangle
-        //triangles that have atleast one line intersection, calculate how to split it in two 
-        //triangles that dont intersect, if they are above, save them in one list, if bellow save them in another
         for (int j = 0; j < submeshCount; j++)
         {
             tris = listPooler.GetPooledList();
             targetMesh.GetTriangles(tris, j);
             for (int i = 0; i < tris.Count; i += 3)
             {
-                triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
-                triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
-                triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
+                //triVerts[0] = target.transform.TransformPoint(verts[tris[i]]);
+                //triVerts[1] = target.transform.TransformPoint(verts[tris[i + 1]]);
+                //triVerts[2] = target.transform.TransformPoint(verts[tris[i + 2]]);
 
-                triUvs[0] = uvs[tris[i]];
-                triUvs[1] = uvs[tris[i + 1]];
-                triUvs[2] = uvs[tris[i + 2]];
+                int vertexIndex = tris[i];
+                int vertexIndex1 = tris[i+1];
+                int vertexIndex2 = tris[i+2];
 
-                triNormals[0] = normals[tris[i]];
-                triNormals[1] = normals[tris[i + 1]];
-                triNormals[2] = normals[tris[i + 2]];
+                Matrix4x4 bm0 = boneMatrices[boneWeights[vertexIndex].boneIndex0];
+                Matrix4x4 bm1 = boneMatrices[boneWeights[vertexIndex].boneIndex1];
+                Matrix4x4 bm2 = boneMatrices[boneWeights[vertexIndex].boneIndex2];
+                Matrix4x4 bm3 = boneMatrices[boneWeights[vertexIndex].boneIndex3];
 
-                triTangents[0] = tangents[tris[i]];
-                triTangents[1] = tangents[tris[i + 1]];
-                triTangents[2] = tangents[tris[i + 2]];
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex].weight0 + bm1[n] * boneWeights[vertexIndex].weight1 + bm2[n] * boneWeights[vertexIndex].weight2 + bm3[n] * boneWeights[vertexIndex].weight3;
+                }
+
+                //tris[i]
+                triVerts[0] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex]);
+                triUvs[0] = uvs[vertexIndex];
+                triNormals[0] = normals[vertexIndex];
+                triTangents[0] = tangents[vertexIndex];
+                triBoneWeight[0] = boneWeights[vertexIndex];
+
+                bm0 = boneMatrices[boneWeights[vertexIndex1].boneIndex0];
+                bm1 = boneMatrices[boneWeights[vertexIndex1].boneIndex1];
+                bm2 = boneMatrices[boneWeights[vertexIndex1].boneIndex2];
+                bm3 = boneMatrices[boneWeights[vertexIndex1].boneIndex3];
+
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex1].weight0 + bm1[n] * boneWeights[vertexIndex1].weight1 + bm2[n] * boneWeights[vertexIndex1].weight2 + bm3[n] * boneWeights[vertexIndex1].weight3;
+                }
+
+                triVerts[1] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex1]);
+                triUvs[1] = uvs[vertexIndex1];
+                triNormals[1] = normals[vertexIndex1];
+                triTangents[1] = tangents[vertexIndex1];
+                triBoneWeight[1] = boneWeights[vertexIndex1];
+
+                bm0 = boneMatrices[boneWeights[vertexIndex2].boneIndex0];
+                bm1 = boneMatrices[boneWeights[vertexIndex2].boneIndex1];
+                bm2 = boneMatrices[boneWeights[vertexIndex2].boneIndex2];
+                bm3 = boneMatrices[boneWeights[vertexIndex2].boneIndex3];
+
+                for (int n = 0; n < 16; n++)
+                {
+                    vertexBoneMatrix[n] = bm0[n] * boneWeights[vertexIndex2].weight0 + bm1[n] * boneWeights[vertexIndex2].weight1 + bm2[n] * boneWeights[vertexIndex2].weight2 + bm3[n] * boneWeights[vertexIndex2].weight3;
+                }
+
+                triVerts[2] = vertexBoneMatrix.MultiplyPoint3x4(verts[vertexIndex2]);
+                triUvs[2] = uvs[vertexIndex2];
+                triNormals[2] = normals[vertexIndex2];
+                triTangents[2] = tangents[vertexIndex2];
+                triBoneWeight[2] = boneWeights[vertexIndex2];
 
                 DoesTriIntersectPlane(triVerts[0], triVerts[1], triVerts[2], intersected);
                 if (intersected[0] || intersected[1] || intersected[2])
                 {
-                    TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents);
+                    TriIntersectionPoints(intersected, triVerts, triUvs, triNormals, triTangents, triBoneWeight);
                 }
                 else
                 {
-                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)//above
-                    {
-                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+                    if (Mathf.Sign(Vector3.Dot(planeNormal, (triVerts[0] - planePoint))) > 0)
+                    {//above
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, upVerts, uphashVerts, upNormals, upUVs, upTangents);
                     }
                     else
                     {
-                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+                        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, downVerts, downhashVerts, downNormals, downUVs, downTangents);
                     }
                 }
 
             }
 
-
-            //On the first target submesh saves the number of verts for the resulting cut objects
-            //The point is that, after you cut a mesh once, from a mesh it results into a 2 meshes with 2 submeshtes each (the body and the cut polygon)
-            //Once you cut one of those meshes, you need to keep the second submesh (cut polygon) as a submesh with the "cut" material
-            //So by saving the vertices resulting from the cut of the first submesh (the body)
-            //we can infer that all the remaining vertices are from cutting submeshes with the "cut" material, and they should stay that way 
             if (j == 0 )
             {
                 for (int k = 0; k < upVerts.Count; k++)
@@ -184,40 +233,44 @@ public class CutMultiplePartsConcave : MonoBehaviour
             listPooler.PoolList(tris);
         }
 
-        //if nothing was cut, stop here
         if (centerEdges.Count == 0 || upVerts.Count == 0 || downVerts.Count == 0)
         {
             return;
         }
 
-        //Create triangles for the cut bodies
         CreateBodyTris(upVerts, upTris, bigMeshVertsSizeUp);
         CreateBodyTris(downVerts, downTris, bigMeshVertsSizeDown);
 
-        //Detect all polygons resulting from the cut
         List<List<Vector3>> groupedVerts = GroupConnectedCenterVerts();
 
         List<IntersectionLoop> faceLoops = new List<IntersectionLoop>();
         for (int i = 0; i < groupedVerts.Count; i++)
         {
             faceLoops.Add(new IntersectionLoop(groupedVerts[i]));
+            Debug.Log(groupedVerts[i].Count);
         }
 
-        //From the polygons create tris, normals, etc for each
         CreateHullMeshFromEdgeLoop(upVerts, uphashVerts, upTris, upUVs, upNormals, upTangents, faceLoops, true);
         CreateHullMeshFromEdgeLoop(downVerts, downhashVerts, downTris, downUVs, downNormals, downTangents, faceLoops, false);
 
-        //complete the Objects
         CreateFinalGameObjects(upVerts, upTris, upNormals, upTangents, upUVs);
         CreateFinalGameObjects(downVerts, downTris, downNormals, downTangents, downUVs);
 
-        //Destroy original target object
         Destroy(target);
     }
 
-    void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
+    void MyRemoveAt<T>(List<List<T>> list, int k)
+    {
+        List<T> tmp = list[list.Count - 1];
+        list[list.Count - 1] = list[k];
+        list[k] = tmp;
+        list.RemoveAt(list.Count - 1);
+    }
+
+    void AddTriToCorrectMeshObject(Vector3[] wPos, Vector3[] wNormals, Vector4[] tangents, Vector2[] UVs, BoneWeight[] boneWeights, List<List<Vector3>> vertParts, List<OrderedHashSet<Vector3>> vertPartsHashed,
         List<List<Vector3>> normalParts, List<List<Vector2>> UVParts, List<List<Vector4>> tangentParts)
     {
+
         List<int> indexFound = listPooler.GetPooledList();
         for (int w = 0; w < vertPartsHashed.Count; w++)
         {
@@ -489,28 +542,72 @@ public class CutMultiplePartsConcave : MonoBehaviour
 
         for (int i = 0; i < partVerts.Count; i++)
         {
-            GameObject newPart = Instantiate(prefabPart);
+            bool isBigPart = nVerts / 2 < partVerts[i].Count;
+
+            GameObject newPart;
+
+            if (isBigPart)
+            {
+                newPart = Instantiate(prefabBigPart, parentTarget);
+            }else
+            {
+                newPart = Instantiate(prefabSmallPart, parentTarget);
+            }
+
             newPart.transform.localScale = target.transform.localScale;
             newPart.transform.rotation = target.transform.rotation;
 
             for (int k = 0; k < partVerts[i].Count; k++)
             {
                 partVerts[i][k] = newPart.transform.InverseTransformPoint(partVerts[i][k]);
-                partNormals[i][k] = partNormals[i][k];
             }
 
-            Mesh newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
+            Mesh newPartMesh;
+
+            SkinnedMeshRenderer newSkin;
+            if (nVerts/2 < partVerts[i].Count)
+            {
+                newPartMesh = new Mesh();
+                newPartMesh.bindposes = bindPoses;
+                newSkin = newPart.GetComponent<SkinnedMeshRenderer>();
+                newSkin.bones = bones;
+                newSkin.rootBone = targetRootBone;
+            }else
+            {
+                newSkin = null;
+                newPartMesh = newPart.GetComponent<MeshFilter>().mesh;
+            }
+
             newPartMesh.Clear();
-            newPartMesh.subMeshCount = 2;
+
             newPartMesh.SetVertices(partVerts[i]);
-            newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
-            newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
+
+            if (partTris[i].SubmeshTris.Count > 0)
+            {
+                newPartMesh.subMeshCount = 2;
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+                newPartMesh.SetTriangles(partTris[i].SubmeshTris, 1);
+            }else
+            {
+                newPartMesh.subMeshCount = 1;
+                newPartMesh.SetTriangles(partTris[i].BodyTris, 0);
+            }
+
             newPartMesh.SetNormals(partNormals[i]);
             newPartMesh.SetTangents(partTangents[i]);
             newPartMesh.SetUVs(0, partUvs[i]);
             newPartMesh.RecalculateBounds();
-            newPart.GetComponent<Renderer>().material = targetRenderer.material;
-            newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
+
+            if (isBigPart)
+            {
+                newSkin.sharedMesh = newPartMesh;
+                newSkin.material = targetRenderer.material;
+            }
+            else
+            {
+                newPart.GetComponent<Renderer>().material = targetRenderer.material;
+                newPart.GetComponent<MeshCollider>().sharedMesh = newPartMesh;
+            }
 
             //return protoMesh lists to the pool (need to think if the structs themselves could be pooled aswell somehow)
             listPooler.PoolList(partTris[i].BodyTris);
@@ -529,7 +626,7 @@ public class CutMultiplePartsConcave : MonoBehaviour
         intersections[2] = upOrDown != upOrDown3;
     }
 
-    void TriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents)
+    void TriIntersectionPoints(bool[] intersections, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents, BoneWeight[] boneWeights)
     {
         List<Vector3> tmpUpVerts = listPooler.GetPooledListVector3();
         List<Vector3> tmpDownVerts = listPooler.GetPooledListVector3();
@@ -539,6 +636,8 @@ public class CutMultiplePartsConcave : MonoBehaviour
         List<Vector2> tmpDownUvs = listPooler.GetPooledListVector2();
         List<Vector4> tmpUpTangents = listPooler.GetPooledListVector4();
         List<Vector4> tmpDownTangents = listPooler.GetPooledListVector4();
+        List<BoneWeight> tmpUpBoneWeight = listPooler.GetPooledListBoneWeight();
+        List<BoneWeight> tmpDownBoneWeight = listPooler.GetPooledListBoneWeight();
 
         float upOrDown = Mathf.Sign(Vector3.Dot(planeNormal, verts[0] - planePoint));
         float upOrDown2 = Mathf.Sign(Vector3.Dot(planeNormal, verts[1] - planePoint));
@@ -548,26 +647,26 @@ public class CutMultiplePartsConcave : MonoBehaviour
 
         if (intersections[0])
         {
-            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown, 0, 1, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
-                tmpUpTangents, tmpDownTangents);
+            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown, 0, 1, verts, uvs, normals, tangents, boneWeights, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+                tmpUpTangents, tmpDownTangents, tmpUpBoneWeight, tmpDownBoneWeight);
             newVectorIndex++;
         }
         if (intersections[1])
         {
-            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown2, 1, 2, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
-                 tmpUpTangents, tmpDownTangents);
+            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown2, 1, 2, verts, uvs, normals, tangents, boneWeights, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+                 tmpUpTangents, tmpDownTangents, tmpUpBoneWeight, tmpDownBoneWeight);
             newVectorIndex++;
         }
         if (intersections[2])
         {
-            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown3, 2, 0, verts, uvs, normals, tangents, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
-                 tmpUpTangents, tmpDownTangents);
+            newTriangleEdge[newVectorIndex] = EdgeIntersectionPoints(upOrDown3, 2, 0, verts, uvs, normals, tangents, boneWeights, tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs,
+                 tmpUpTangents, tmpDownTangents, tmpUpBoneWeight, tmpDownBoneWeight);
         }
 
         //only 2 new vectors in all cases
         centerEdges.Add(new Edge(newTriangleEdge[0], newTriangleEdge[1]));
 
-        TriIntersectionType(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents);
+        TriIntersectionType(tmpUpVerts, tmpDownVerts, tmpUpNormals, tmpDownNormals, tmpUpUvs, tmpDownUvs, tmpUpTangents, tmpDownTangents, tmpUpBoneWeight, tmpDownBoneWeight);
 
         listPooler.PoolList(tmpUpVerts);
         listPooler.PoolList(tmpDownVerts);
@@ -579,8 +678,9 @@ public class CutMultiplePartsConcave : MonoBehaviour
         listPooler.PoolList(tmpDownTangents);
     }
 
-    Vector3 EdgeIntersectionPoints(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents,
-    List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs, List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
+    Vector3 EdgeIntersectionPoints(float upOrDown, int pIndex1, int pIndex2, Vector3[] verts, Vector2[] uvs, Vector3[] normals, Vector4[] tangents, BoneWeight[] boneWeights,
+    List<Vector3> top, List<Vector3> bottom, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs, List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs,
+    List<BoneWeight> tmpUpBoneWeight, List<BoneWeight> tmpDownBoneWeight)
     {
         Vector3 p1 = verts[pIndex1];
         Vector3 p2 = verts[pIndex2];
@@ -594,12 +694,16 @@ public class CutMultiplePartsConcave : MonoBehaviour
         Vector4 t1 = tangents[pIndex1];
         Vector4 t2 = tangents[pIndex2];
 
+        BoneWeight bw1 = boneWeights[pIndex1];
+        BoneWeight bw2 = boneWeights[pIndex2];
+
         Vector3 rayDir = (p2 - p1).normalized;
         float t = Vector3.Dot(planePoint - p1, planeNormal) / Vector3.Dot(rayDir, planeNormal);
         Vector3 newVert = p1 + rayDir * t;
         Vector2 newUv = new Vector2(0, 0);
         Vector3 newNormal = new Vector3(0, 0, 0);
         Vector4 newTangent = new Vector4(0, 0, 0, 0);
+        BoneWeight newBoneWeight = new BoneWeight();
         BarycentricInterpolation(newVert, ref newUv, ref newNormal, ref newTangent, verts, uvs, normals, tangents);
 
         //---------------------------------
@@ -612,12 +716,14 @@ public class CutMultiplePartsConcave : MonoBehaviour
                 tmpUpUvs.Add(uv1);
                 tmpUpNormals.Add(n1);
                 tmpUpTangs.Add(t1);
+                tmpUpBoneWeight.Add(bw1);
             }
 
             top.Add(newVert);
             tmpUpUvs.Add(newUv);
             tmpUpNormals.Add(newNormal);
             tmpUpTangs.Add(newTangent);
+            tmpUpBoneWeight.Add(newBoneWeight);
 
             bottom.Add(newVert);
             tmpDownUvs.Add(newUv);
@@ -630,6 +736,7 @@ public class CutMultiplePartsConcave : MonoBehaviour
                 tmpDownUvs.Add(uv2);
                 tmpDownNormals.Add(n2);
                 tmpDownTangs.Add(t2);
+                tmpDownBoneWeight.Add(bw2);
             }
 
             return newVert;
@@ -648,6 +755,7 @@ public class CutMultiplePartsConcave : MonoBehaviour
                 tmpUpUvs.Add(uv2);
                 tmpUpNormals.Add(n2);
                 tmpUpTangs.Add(t2);
+                tmpUpBoneWeight.Add(bw2);
             }
             if (!bottom.Contains(p1))
             {
@@ -655,6 +763,7 @@ public class CutMultiplePartsConcave : MonoBehaviour
                 tmpDownUvs.Add(uv1);
                 tmpDownNormals.Add(n1);
                 tmpDownTangs.Add(t1);
+                tmpDownBoneWeight.Add(bw1);
             }
 
             bottom.Add(newVert);
@@ -667,7 +776,7 @@ public class CutMultiplePartsConcave : MonoBehaviour
     }
 
     void TriIntersectionType(List<Vector3> tmpUpVerts, List<Vector3> tmpDownVerts, List<Vector3> tmpUpNormals, List<Vector3> tmpDownNormals, List<Vector2> tmpUpUvs, List<Vector2> tmpDownUvs,
-        List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs)
+        List<Vector4> tmpUpTangs, List<Vector4> tmpDownTangs, List<BoneWeight> tmpUpBoneW, List<BoneWeight> tmpDownBoneW)
     {
         triVerts[0] = tmpDownVerts[0];
         triVerts[1] = tmpDownVerts[1];
@@ -685,7 +794,11 @@ public class CutMultiplePartsConcave : MonoBehaviour
         triTangents[1] = tmpDownTangs[1];
         triTangents[2] = tmpDownTangs[2];
 
-        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+        triBoneWeight[0] = tmpDownBoneW[0];
+        triBoneWeight[1] = tmpDownBoneW[1];
+        triBoneWeight[2] = tmpDownBoneW[2];
+
+        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, downVerts, downhashVerts, downNormals, downUVs, downTangents);
 
         if (tmpDownVerts.Count > 3)
         { //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
@@ -706,8 +819,14 @@ public class CutMultiplePartsConcave : MonoBehaviour
             triTangents[1] = tmpDownTangs[2];
             triTangents[2] = tmpDownTangs[3];
 
-            AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, downVerts, downhashVerts, downNormals, downUVs, downTangents);
+            triBoneWeight[0] = tmpDownBoneW[0];
+            triBoneWeight[1] = tmpDownBoneW[2];
+            triBoneWeight[2] = tmpDownBoneW[3];
+
+            AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, downVerts, downhashVerts, downNormals, downUVs, downTangents);
         }
+
+
 
         triVerts[0] = tmpUpVerts[0];
         triVerts[1] = tmpUpVerts[1];
@@ -725,7 +844,12 @@ public class CutMultiplePartsConcave : MonoBehaviour
         triTangents[1] = tmpUpTangs[1];
         triTangents[2] = tmpUpTangs[2];
 
-        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+        triBoneWeight[0] = tmpUpBoneW[0];
+        triBoneWeight[1] = tmpUpBoneW[1];
+        triBoneWeight[2] = tmpUpBoneW[2];
+
+
+        AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, upVerts, uphashVerts, upNormals, upUVs, upTangents);
 
         if (tmpUpVerts.Count > 3)
         { //for when a triangle is cut into 3 triangles (2 on 1 side and 1 on the other)
@@ -746,7 +870,11 @@ public class CutMultiplePartsConcave : MonoBehaviour
             triTangents[1] = tmpUpTangs[2];
             triTangents[2] = tmpUpTangs[3];
 
-            AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, upVerts, uphashVerts, upNormals, upUVs, upTangents);
+            triBoneWeight[0] = tmpUpBoneW[0];
+            triBoneWeight[1] = tmpUpBoneW[2];
+            triBoneWeight[2] = tmpUpBoneW[3];
+
+            AddTriToCorrectMeshObject(triVerts, triNormals, triTangents, triUvs, triBoneWeight, upVerts, uphashVerts, upNormals, upUVs, upTangents);
         }
     }
 
@@ -764,14 +892,6 @@ public class CutMultiplePartsConcave : MonoBehaviour
         newNormal = normals[0] * a1 + normals[1] * a2 + normals[2] * a3;
         newUV = uvs[0] * a1 + uvs[1] * a2 + uvs[2] * a3;
         newTangent = tangents[0] * a1 + tangents[1] * a2 + tangents[2] * a3;
-    }
-
-    void MyRemoveAt<T>(List<List<T>> list, int k)
-    {
-        List<T> tmp = list[list.Count - 1];
-        list[list.Count - 1] = list[k];
-        list[k] = tmp;
-        list.RemoveAt(list.Count - 1);
     }
 
 }
